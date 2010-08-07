@@ -34,6 +34,7 @@ import gtk
 import os
 import pango
 import sys
+import codecs
 
 BASE_FONT = 'monospace'
 VERSION = '1.01'
@@ -133,7 +134,7 @@ class Symbol:
 # Returns a list of lines. Each line contains a list of symbols
 # FIELD_* constants.
 def loadBoxData(boxName, height):
-    f = open(boxName, 'r')
+    f = codecs.open(boxName, 'r', 'utf-8')
     result = []
     symbolLine = []
     prevRight = -1
