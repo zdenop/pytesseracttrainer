@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# SVN: r6
+# SVN: r7
 
 # pyTesseractTrainer is editor for tesseract-ocr box files.
 # pyTesseractTrainer is successor of tesseractTrainer.py 
@@ -9,7 +9,7 @@
 # http://pytesseracttrainer.googlecode.com
 #
 # pyTesseractTrainer.py
-# Copyright 2010 Zdenko PodobnĂ˝ <zdenop at gmail.com>
+# Copyright 2010 Zdenko Podobný <zdenop at gmail.com>
 # http://pytesseracttrainer.googlecode.com
 # http://sk-spell.sk.cx
 #
@@ -38,6 +38,7 @@ import codecs
 
 BASE_FONT = 'monospace'
 VERSION = '1.01'
+VERBOSE = 1  # if 1, than print additional information to standrard output
 
 MENU = '''<ui>
   <menubar name="MenuBar">
@@ -135,12 +136,31 @@ class Symbol:
 # FIELD_* constants.
 def loadBoxData(boxName, height):
     f = codecs.open(boxName, 'r', 'utf-8')
+    if VERBOSE == 1:
+        print "File %s is opened." % boxName
     result = []
     symbolLine = []
     prevRight = -1
+    line_nmbr = 1
 
     for line in f:
-        (text, left, bottom, right, top) = line.split()
+        if len(line.split()) == 6:
+            (text, left, bottom, right, top, page) = line.split() # tesseract 3.00
+            #print "tess 3.00"
+        elif len(line.split()) == 5:
+            (text, left, bottom, right, top) = line.split() # tesseract < 2.0x
+            #print "tess 2.0x"
+        else:
+            dialog = gtk.MessageDialog(parent = None, 
+                buttons = gtk.BUTTONS_CLOSE, 
+                flags = gtk.DIALOG_DESTROY_WITH_PARENT,
+                type = gtk.MESSAGE_WARNING, 
+                message_format = "Unknown format of line %s (%s) in box file '%s'!" % (str(line_nmbr), line, boxName))
+            dialog.set_title("Error in box file!")
+            result = dialog.run()
+            dialog.destroy()
+            sys.exit()
+        line_nmbr += 1
         s = Symbol()
 
         if (text.startswith('@')):
@@ -620,8 +640,8 @@ class MainWindow:
             'pyTesseractTrainer version 1.01\n'
         '\n'
         'http://pytesseracttrainer.googlecode.com\n'
-        'Copyright 2010 Zdenko PodobnĂ˝ <zdenop at gmail.com>\n'
-            'Copyright 2007 CÄtÄlin FrĂ˘ncu <cata at francu.com>\n'
+        'Copyright 2010 Zdenko Podobný <zdenop at gmail.com>\n'
+            'Copyright 2007 Cătălin Frâncu <cata at francu.com>\n'
             '\n'
             'This program is free software: you can redistribute it and/or '
             'modify it under the terms of the GNU General Public License v3')
