@@ -1,20 +1,32 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# SVN: r4
 
-# Copyright 2007 Catalin Francu <cata@francu.com>
+# pyTesseractTrainer is editor for tesseract-ocr box files.
+# pyTesseractTrainer is successor of tesseractTrainer.py 
+#
+# More information about project can be found on project page:
+# http://pytesseracttrainer.googlecode.com
+#
+# pyTesseractTrainer.py
+# Copyright 2010 Zdenko Podobný <zdenop at gmail.com>
+# http://pytesseracttrainer.googlecode.com
+# http://sk-spell.sk.cx
+#
+# tesseractTrainer.py
+# Copyright 2007 Catalin Francu <cata at francu.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# GNU General Public License for more details.#}}}
 
 import pygtk
 pygtk.require('2.0')
@@ -24,6 +36,7 @@ import pango
 import sys
 
 BASE_FONT = 'monospace'
+VERSION = '1.01'
 
 MENU = '''<ui>
   <menubar name="MenuBar">
@@ -598,16 +611,19 @@ class MainWindow:
     #enddef
 
     def doHelpAbout(self, action):
-        dialog = gtk.Dialog('About TesseractTrainer', self.window,
+        dialog = gtk.Dialog('About pyTesseractTrainer', self.window,
                             gtk.DIALOG_NO_SEPARATOR | gtk.DIALOG_MODAL,
                             (gtk.STOCK_OK, gtk.RESPONSE_OK))
         dialog.set_size_request(450, 200)
         label = gtk.Label(
-            'TesseractTrainer\n'
-            'Copyright 2007 Cătălin Frâncu <cata@francu.com>\n'
+            'pyTesseractTrainer version 1.01\n'
+        '\n'
+        'http://pytesseracttrainer.googlecode.com\n'
+        'Copyright 2010 Zdenko Podobný <zdenop at gmail.com>\n'
+            'Copyright 2007 Cătălin Frâncu <cata at francu.com>\n'
             '\n'
             'This program is free software: you can redistribute it and/or '
-            'modify it under the terms of the GNU General Public License')
+            'modify it under the terms of the GNU General Public License v3')
         label.set_line_wrap(True)
         dialog.vbox.pack_start(label, True, True, 0)
         label.show()
@@ -822,7 +838,7 @@ class MainWindow:
 
     def __init__(self):
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-        self.window.set_title("Tesseract Box Editor")
+        self.window.set_title("pyTesseractTrainer - Tesseract Box Editor version 1.01")
         self.window.connect('destroy', lambda w: gtk.main_quit())
         self.window.set_size_request(800, 600)
 
