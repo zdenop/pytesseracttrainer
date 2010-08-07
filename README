@@ -1,0 +1,9 @@
+pyTesseractTrainer - Visual tesseract box file editor
+
+Project homepage: http://code.google.com/p/pytesseracttrainer/
+Source: http://code.google.com/p/pytesseracttrainer/source/checkout
+Licence: GNU General Public License v3
+
+pyTesseractTrainer is editor for tesseract-ocr box files. It written using python and PyGTK library, so it can be built on different platforms.
+
+pyTesseractTrainer is successor of tesseractTrainer.py (http://tesseract-ocr.googlecode.com/files/tesseractTrainer.py)
