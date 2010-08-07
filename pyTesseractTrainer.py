@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# SVN: r4
+# SVN: r6
 
 # pyTesseractTrainer is editor for tesseract-ocr box files.
 # pyTesseractTrainer is successor of tesseractTrainer.py 
@@ -9,7 +9,7 @@
 # http://pytesseracttrainer.googlecode.com
 #
 # pyTesseractTrainer.py
-# Copyright 2010 Zdenko Podobný <zdenop at gmail.com>
+# Copyright 2010 Zdenko PodobnĂ˝ <zdenop at gmail.com>
 # http://pytesseracttrainer.googlecode.com
 # http://sk-spell.sk.cx
 #
@@ -195,7 +195,7 @@ def ensureVisible(adjustment, start, size):
 #enddef
 
 def findImageHeight(fileName):
-    f = os.popen('identify -format "%h" ' + fileName)
+    f = os.popen('identify -format "%h" "' + fileName + '"')
     height = int(f.readline())
     f.close()
     return height
@@ -620,8 +620,8 @@ class MainWindow:
             'pyTesseractTrainer version 1.01\n'
         '\n'
         'http://pytesseracttrainer.googlecode.com\n'
-        'Copyright 2010 Zdenko Podobný <zdenop at gmail.com>\n'
-            'Copyright 2007 Cătălin Frâncu <cata at francu.com>\n'
+        'Copyright 2010 Zdenko PodobnĂ˝ <zdenop at gmail.com>\n'
+            'Copyright 2007 CÄtÄlin FrĂ˘ncu <cata at francu.com>\n'
             '\n'
             'This program is free software: you can redistribute it and/or '
             'modify it under the terms of the GNU General Public License v3')
