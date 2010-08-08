@@ -36,12 +36,13 @@ import os
 import pango
 import sys
 import codecs
+from time import clock
 from datetime import datetime, date
 
 VERSION = '1.01'
 REVISION = '19'
 VERBOSE = 1  # if 1, than print additional information to standrard output
-
+DEBUG_SPEED = 1
 BASE_FONT = 'monospace'
 
 MENU = '''<ui>
@@ -73,6 +74,17 @@ DIR_RIGHT = 1
 DIR_TOP = 2
 DIR_BOTTOM = 3
 
+def print_timing(func):
+    '''http://www.daniweb.com/code/snippet216610.html'''
+    def wrapper(*arg):
+        t1 = clock()
+        res = func(*arg)
+        t2 = clock()
+        if DEBUG_SPEED == 1:
+            print '%s took %0.3f ms' % (func.func_name, (t2-t1)*1000.0)
+        return res
+    return wrapper
+
 class Symbol:
     text = ''
     left = 0
@@ -86,6 +98,7 @@ class Symbol:
     entry = None
     handlers = []
 
+    @print_timing
     def setEntryFont(self):
         font = BASE_FONT
         if self.bold:
@@ -105,6 +118,7 @@ class Symbol:
         #endif
     #enddef
 
+    @print_timing
     def clone(self):
         s = Symbol()
         s.text = self.text
@@ -121,6 +135,7 @@ class Symbol:
         return s
     #enddef
 
+    @print_timing
     def deleteLabelBefore(self):
         e = self.entry
         box = e.get_parent()
@@ -129,6 +144,7 @@ class Symbol:
         label.destroy()
     #enddef
 
+    @print_timing
     def __str__(self):
         return 'Text [%s] L%d R%d T%d B%d' % (
             self.text, self.left, self.right,
@@ -138,6 +154,7 @@ class Symbol:
 
 # Returns a list of lines. Each line contains a list of symbols
 # FIELD_* constants.
+@print_timing
 def loadBoxData(boxName, height):
     f = codecs.open(boxName, 'r', 'utf-8')
     if VERBOSE == 1:
@@ -204,6 +221,7 @@ def loadBoxData(boxName, height):
 
 # Ensures that the adjustment is set to include the range of size "size"
 # starting at "start"
+@print_timing
 def ensureVisible(adjustment, start, size):
     # Compute the visible range
     visLo = adjustment.value
@@ -220,6 +238,7 @@ def ensureVisible(adjustment, start, size):
 #enddef
 
 # Counts all the black pixels in column x
+@print_timing
 def countBlackPixels(pixels, x):
     numPixels = 0;
     for row in pixels:
@@ -230,6 +249,7 @@ def countBlackPixels(pixels, x):
     return numPixels
 #enddef
 
+@print_timing
 def isBlack(pixel):
     return pixel[0][0] + pixel[1][0] + pixel[2][0] < 128 * 3
 #enddef
@@ -241,6 +261,7 @@ class MainWindow:
     buttonUpdateInProgress = None
     boxes = None
 
+    @print_timing
     def reconnectEntries(self, rowIndex):
         row = self.boxes[rowIndex]
         for col in range(0, len(row)):
@@ -258,6 +279,7 @@ class MainWindow:
         #endfor
     #enddef
 
+    @print_timing
     def errorDialog(self, labelText, parent):
         dialog = gtk.Dialog("Error", parent,
                             gtk.DIALOG_NO_SEPARATOR | gtk.DIALOG_MODAL,
@@ -269,6 +291,7 @@ class MainWindow:
         dialog.destroy()
     #enddef
 
+    @print_timing
     def makeGtkEntry(self, symbol, row, col):
         symbol.entry = gtk.Entry(10)
         symbol.entry.set_text(symbol.text)
@@ -281,11 +304,13 @@ class MainWindow:
                                  row, col)]
     #enddef
 
+    @print_timing
     def invalidateImage(self):
         width, height = self.drawingArea.window.get_size()
         self.drawingArea.window.invalidate_rect((0, 0, width, height), False)
     #enddef
 
+    @print_timing
     def onCheckButtonToggled(self, widget, attr):
         if self.buttonUpdateInProgress or self.selectedRow == None:
             return
@@ -332,6 +357,7 @@ class MainWindow:
         #endwhile
     #enddef
 
+    @print_timing
     def onEntryFocus(self, entry, ignored, row, column):
         self.selectedRow = row
         self.selectedColumn = column
@@ -361,6 +387,7 @@ class MainWindow:
         self.buttonUpdateInProgress = None
     #enddef
 
+    @print_timing
     def onEntryChanged(self, entry, row, col):
         symbol = self.boxes[row][col]
         symbol.text = entry.get_text()
@@ -375,6 +402,8 @@ class MainWindow:
     #enddef
 
     # Intercept ctrl-arrow and ctrl-shift-arrow
+
+    @print_timing
     def onEntryKeyPress(self, entry, event, row, col):
         if not event.state & gtk.gdk.CONTROL_MASK:
             return False
@@ -426,6 +455,7 @@ class MainWindow:
         return False
     #enddef
 
+    @print_timing
     def onSpinButtonChanged(self, button, dir):
         if self.buttonUpdateInProgress or self.selectedRow == None:
             return
@@ -448,6 +478,8 @@ class MainWindow:
     #enddef
 
     # Creates text entries from the boxes
+
+    @print_timing
     def populateTextVBox(self):
         row = 0
         for line in self.boxes:
@@ -471,6 +503,7 @@ class MainWindow:
         #endfor
     #enddef
 
+    @print_timing
     def redrawArea(self, drawingArea, event):
         gc = drawingArea.get_style().fg_gc[gtk.STATE_NORMAL]
         if self.pixbuf:
@@ -485,6 +518,7 @@ class MainWindow:
         #endif
     #enddef
 
+    @print_timing
     def loadImageAndBoxes(self, imageName, fileChooser):
         (name, extension) = imageName.rsplit('.', 1)
         boxName = name + '.box'
@@ -540,6 +574,7 @@ class MainWindow:
         return True
     #enddef
 
+    @print_timing
     def mergeTextFile(self, fileName, fileChooser):
         row = 0
         col = 0
@@ -567,7 +602,8 @@ class MainWindow:
                              fileChooser)
         #endtry
     #enddef
-    
+
+    @print_timing
     def doFileOpen(self, action):
         chooser = gtk.FileChooserDialog(
             "Open Image", self.window, gtk.FILE_CHOOSER_ACTION_OPEN,
@@ -604,6 +640,7 @@ class MainWindow:
         chooser.destroy()
     #enddef
 
+    @print_timing
     def doFileMergeText(self, action):
         chooser = gtk.FileChooserDialog(
             "Merge Text File", self.window, gtk.FILE_CHOOSER_ACTION_OPEN,
@@ -624,6 +661,7 @@ class MainWindow:
         chooser.destroy()
     #enddef
 
+    @print_timing
     def doFileSave(self, action):
         if self.boxes == None:
             self.errorDialog('Nothing to save', self.window)
@@ -652,6 +690,7 @@ class MainWindow:
         f.close()
     #enddef
 
+    @print_timing
     def doHelpAbout(self, action):
         dialog = gtk.Dialog('About pyTesseractTrainer', self.window,
                             gtk.DIALOG_NO_SEPARATOR | gtk.DIALOG_MODAL,
@@ -659,7 +698,7 @@ class MainWindow:
         dialog.set_size_request(450, 200)
         label = gtk.Label(
             'pyTesseractTrainer version %s, revision: %s\n'
-            'website: <a href="http://pytesseracttrainer.googlecode.com">pytesseracttrainer.googlecode.com</a>\n'
+            'website: pytesseracttrainer.googlecode.com\n'
             '\n'
             'Copyright 2010 Zdenko Podobný <zdenop at gmail.com>\n'
             'Copyright 2007 Cătălin Frâncu <cata at francu.com>\n'
@@ -674,6 +713,7 @@ class MainWindow:
         dialog.destroy()
     #enddef
 
+    @print_timing
     def doHelpShortcuts(self, action):
         dialog = gtk.Dialog('Keyboard shortcuts', self.window,
                             gtk.DIALOG_NO_SEPARATOR | gtk.DIALOG_MODAL,
@@ -699,6 +739,7 @@ class MainWindow:
     #enddef
 
     # Looks 5 pixels to the left and right of the median divider
+    @print_timing
     def findSplitPoint(self, symbol):
         subpixbuf = self.pixbuf.subpixbuf(symbol.left, symbol.top,
                                           symbol.right - symbol.left,
@@ -722,6 +763,7 @@ class MainWindow:
         return bestX + symbol.left
     #enddef
 
+    @print_timing
     def doCommandsSplit(self, action):
         if self.selectedRow == None:
             self.errorDialog('Click into a cell first.', self.window)
@@ -762,6 +804,7 @@ class MainWindow:
         self.buttonUpdateInProgress = None
     #enddef
 
+    @print_timing
     def doCommandsJoin(self, action):
         if self.selectedRow == None:
             self.errorDialog('Click into a cell first.', self.window)
@@ -795,6 +838,7 @@ class MainWindow:
         self.buttonUpdateInProgress = None
     #enddef
 
+    @print_timing
     def doCommandsDelete(self, action):
         if self.selectedRow == None:
             self.errorDialog('Click into a cell first.', self.window)
@@ -817,7 +861,6 @@ class MainWindow:
                 this.deleteLabelBefore()
             #endif
         #endif
-                
 
         this.entry.destroy()
         del row[self.selectedColumn]
@@ -837,16 +880,19 @@ class MainWindow:
         self.boxes[self.selectedRow][self.selectedColumn].entry.grab_focus()
     #enddef
 
+    @print_timing
     def setImageControlSensitivity(self, bool):
         self.actionGroup.get_action('MergeText').set_sensitive(bool)
         self.actionGroup.get_action('Save').set_sensitive(bool)
     #enddef
 
+    @print_timing
     def setSymbolControlSensitivity(self, bool):
         self.buttonBox.set_sensitive(bool)
         self.actionGroup.get_action('Commands').set_sensitive(bool)
     #enddef
 
+    @print_timing
     def makeMenu(self):
         uiManager = gtk.UIManager()
         self.accelGroup = uiManager.get_accel_group()
@@ -879,6 +925,7 @@ class MainWindow:
         return uiManager.get_widget('/MenuBar')
     #enddef
 
+    @print_timing
     def __init__(self):
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.set_title("pyTesseractTrainer - Tesseract Box Editor version %s, revision:%s" % (VERSION,REVISION))
@@ -979,6 +1026,7 @@ class MainWindow:
     #enddef
 #endClass
 
+@print_timing
 def main():
     gtk.main()
     return 0
