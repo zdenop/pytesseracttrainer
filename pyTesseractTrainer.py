@@ -39,7 +39,7 @@ import codecs
 from datetime import datetime, date
 
 VERSION = '1.01'
-REVISION = '18'
+REVISION = '19'
 VERBOSE = 1  # if 1, than print additional information to standrard output
 
 BASE_FONT = 'monospace'
