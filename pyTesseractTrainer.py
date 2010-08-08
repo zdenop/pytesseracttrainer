@@ -38,7 +38,7 @@ import sys
 import codecs
 
 VERSION = '1.01'
-REVISION = '14'
+REVISION = '17'
 VERBOSE = 1  # if 1, than print additional information to standrard output
 
 BASE_FONT = 'monospace'
@@ -216,13 +216,6 @@ def ensureVisible(adjustment, start, size):
         #endif
         adjustment.set_value(desired)
     #endif
-#enddef
-
-def findImageHeight(fileName):
-    f = os.popen('identify -format "%h" "' + fileName + '"')
-    height = int(f.readline())
-    f.close()
-    return height
 #enddef
 
 # Counts all the black pixels in column x
@@ -504,7 +497,9 @@ class MainWindow:
             return False
         #endtry
 
-        height = findImageHeight(imageName)
+        self.pixbuf = gtk.gdk.pixbuf_new_from_file(imageName)
+        height = self.pixbuf.get_height()
+        
         try:
             self.boxes = loadBoxData(boxName, height)
             self.loadedBoxFile = boxName
