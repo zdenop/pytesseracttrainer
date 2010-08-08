@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# SVN: r7
+# SVN revision "$WCREV$"
+# Date: "$WCDATE$"
 
 # pyTesseractTrainer is editor for tesseract-ocr box files.
 # pyTesseractTrainer is successor of tesseractTrainer.py 
@@ -36,9 +37,11 @@ import pango
 import sys
 import codecs
 
-BASE_FONT = 'monospace'
 VERSION = '1.01'
+REVISION = '14'
 VERBOSE = 1  # if 1, than print additional information to standrard output
+
+BASE_FONT = 'monospace'
 
 MENU = '''<ui>
   <menubar name="MenuBar">
@@ -151,15 +154,16 @@ def loadBoxData(boxName, height):
             (text, left, bottom, right, top) = line.split() # tesseract < 2.0x
             #print "tess 2.0x"
         else:
+            message = "Unknown format of line %s:\n'%s'\nin box file '%s'!" \
+                % (str(line_nmbr), line.strip(), boxName)
             dialog = gtk.MessageDialog(parent = None, 
                 buttons = gtk.BUTTONS_CLOSE, 
                 flags = gtk.DIALOG_DESTROY_WITH_PARENT,
-                type = gtk.MESSAGE_WARNING, 
-                message_format = "Unknown format of line %s (%s) in box file '%s'!" % (str(line_nmbr), line, boxName))
+                type = gtk.MESSAGE_WARNING, message_format = message)
             dialog.set_title("Error in box file!")
-            result = dialog.run()
+            dialog.run()
             dialog.destroy()
-            sys.exit()
+            sys.exit() # TODO: do not kill application  please ;-)
         line_nmbr += 1
         s = Symbol()
 
@@ -504,6 +508,7 @@ class MainWindow:
         try:
             self.boxes = loadBoxData(boxName, height)
             self.loadedBoxFile = boxName
+            self.window.set_title("pyTesseractTrainer: %s" % boxName)
         except IOError:
             self.errorDialog('Cannot load image, because there is no '
                              'corresponding box file', fileChooser)
@@ -565,6 +570,16 @@ class MainWindow:
 
         filter = gtk.FileFilter()
         filter.set_name("TIFF files")
+        filter.add_pattern("*.tif")
+        filter.add_pattern("*.tiff")
+        chooser.add_filter(filter)
+
+        filter = gtk.FileFilter()
+        filter.set_name("Image files")
+        filter.add_pattern("*.jpg")
+        filter.add_pattern("*.jpeg")
+        filter.add_pattern("*.png")
+        filter.add_pattern("*.bmp")
         filter.add_pattern("*.tif")
         filter.add_pattern("*.tiff")
         chooser.add_filter(filter)
@@ -637,14 +652,15 @@ class MainWindow:
                             (gtk.STOCK_OK, gtk.RESPONSE_OK))
         dialog.set_size_request(450, 200)
         label = gtk.Label(
-            'pyTesseractTrainer version 1.01\n'
-        '\n'
-        'http://pytesseracttrainer.googlecode.com\n'
-        'Copyright 2010 Zdenko Podobný <zdenop at gmail.com>\n'
+            'pyTesseractTrainer version %s, revision: %s\n'
+            'website: <a href="http://pytesseracttrainer.googlecode.com">pytesseracttrainer.googlecode.com</a>\n'
+            '\n'
+            'Copyright 2010 Zdenko Podobný <zdenop at gmail.com>\n'
             'Copyright 2007 Cătălin Frâncu <cata at francu.com>\n'
             '\n'
             'This program is free software: you can redistribute it and/or '
-            'modify it under the terms of the GNU General Public License v3')
+            'modify it under the terms of the GNU General Public License v3' 
+            % (VERSION,REVISION))
         label.set_line_wrap(True)
         dialog.vbox.pack_start(label, True, True, 0)
         label.show()
@@ -859,7 +875,7 @@ class MainWindow:
 
     def __init__(self):
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-        self.window.set_title("pyTesseractTrainer - Tesseract Box Editor version 1.01")
+        self.window.set_title("pyTesseractTrainer - Tesseract Box Editor version %s, revision:%s" % (VERSION,REVISION))
         self.window.connect('destroy', lambda w: gtk.main_quit())
         self.window.set_size_request(800, 600)
 
