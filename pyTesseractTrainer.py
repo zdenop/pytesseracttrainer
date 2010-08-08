@@ -36,9 +36,10 @@ import os
 import pango
 import sys
 import codecs
+from datetime import datetime, date
 
 VERSION = '1.01'
-REVISION = '17'
+REVISION = '18'
 VERBOSE = 1  # if 1, than print additional information to standrard output
 
 BASE_FONT = 'monospace'
@@ -140,7 +141,7 @@ class Symbol:
 def loadBoxData(boxName, height):
     f = codecs.open(boxName, 'r', 'utf-8')
     if VERBOSE == 1:
-        print "File %s is opened." % boxName
+        print datetime.now(), "File %s is opened." % boxName
     result = []
     symbolLine = []
     prevRight = -1
@@ -497,6 +498,8 @@ class MainWindow:
             return False
         #endtry
 
+        if VERBOSE == 1:
+            print datetime.now(), "File %s is opened." % imageName
         self.pixbuf = gtk.gdk.pixbuf_new_from_file(imageName)
         height = self.pixbuf.get_height()
         
@@ -510,11 +513,17 @@ class MainWindow:
             return False
         #endtry
 
+        if VERBOSE == 1:
+            print datetime.now(), "Displaying image..."
         self.pixbuf = gtk.gdk.pixbuf_new_from_file(imageName)
         self.drawingArea.set_size_request(self.pixbuf.get_width(), height)
+        if VERBOSE == 1:
+            print datetime.now(), "Displaying symbols..."
         self.populateTextVBox()
 
         # Set adjustments on all spin buttons
+        if VERBOSE == 1:
+            print datetime.now(), "Adjusting all spin buttons..."
         self.spinLeft.set_adjustment(
             gtk.Adjustment(0, 0, self.pixbuf.get_width(), 1, 1))
         self.spinRight.set_adjustment(
@@ -526,6 +535,8 @@ class MainWindow:
         self.selectedRow = 0
         self.selectedColumn = 0
         self.boxes[0][0].entry.grab_focus()
+        if VERBOSE == 1:
+            print datetime.now(), "Function loadImageAndBoxes is finished."
         return True
     #enddef
 
