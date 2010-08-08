@@ -1,0 +1,8 @@
+= Description of Test Files =
+
+example.slk.tif		  - example image file
+example.slk.txt		  - text from example image
+example.slk.box		  - example tesseract v2.0x box file
+tv3.example.slk.box	  - example tesseract v3.00 box file
+error.example.slk.box - example of box file with error (missing symbol in 
+					    line 4, additional data in line 8 and empty line 16)
