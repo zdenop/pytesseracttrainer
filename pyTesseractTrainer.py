@@ -40,9 +40,9 @@ from time import clock
 from datetime import datetime, date
 
 VERSION = '1.01'
-REVISION = '19'
+REVISION = '21'
 VERBOSE = 1  # if 1, than print additional information to standrard output
-DEBUG_SPEED = 1
+DEBUG_SPEED = 0
 BASE_FONT = 'monospace'
 
 MENU = '''<ui>
@@ -402,7 +402,6 @@ class MainWindow:
     #enddef
 
     # Intercept ctrl-arrow and ctrl-shift-arrow
-
     @print_timing
     def onEntryKeyPress(self, entry, event, row, col):
         if not event.state & gtk.gdk.CONTROL_MASK:
@@ -477,10 +476,13 @@ class MainWindow:
         self.invalidateImage()
     #enddef
 
-    # Creates text entries from the boxes
-
     @print_timing
     def populateTextVBox(self):
+        ''' Creates text entries from the boxes'''
+        # first we need to remove old symbols 
+        # in case this is not first open file
+        self.textVBox.foreach(lambda widget:self.textVBox.remove(widget))
+        
         row = 0
         for line in self.boxes:
             col = 0
@@ -536,7 +538,7 @@ class MainWindow:
             print datetime.now(), "File %s is opened." % imageName
         self.pixbuf = gtk.gdk.pixbuf_new_from_file(imageName)
         height = self.pixbuf.get_height()
-        
+
         try:
             self.boxes = loadBoxData(boxName, height)
             self.loadedBoxFile = boxName
@@ -927,6 +929,9 @@ class MainWindow:
 
     @print_timing
     def __init__(self):
+        if VERBOSE == 1:
+            print "Platform:", sys.platform, "\nTheme directory:",gtk.rc_get_theme_dir()
+
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.set_title("pyTesseractTrainer - Tesseract Box Editor version %s, revision:%s" % (VERSION,REVISION))
         self.window.connect('destroy', lambda w: gtk.main_quit())
