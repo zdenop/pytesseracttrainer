@@ -1,7 +1,12 @@
-Aug 07 2010      <zdenop@gmail.com>
-    * added image filter
+Aug 09 2010      <zdenop at gmail.com>
+    * buxfix for "symbol area is not clear when another image is open"
+    * bugfix for $@' symbols (used for formating internally)
 
-Aug 07 2010      <zdenop@gmail.com>
+Aug 08 2010      <zdenop at gmail.com>
+    * added image filter
+    * removed dependancy on identify/imagick
+
+Aug 07 2010      <zdenop at gmail.com>
     * Initial version 1.00 -> renamed http://tesseract-ocr.googlecode.com/files/tesseractTrainer.py
     * Prepration for new buxfix release (changed name, licence)
     * Added support for utf-8 encoded box files

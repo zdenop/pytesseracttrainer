@@ -1,10 +1,12 @@
 = Description of Test Files =
 
-example.slk.tif          - example image file
-example.slk.txt          - text from example image
-example.slk.box          - example tesseract v2.0x box file
+example.slk.tif       - example image file
+example.slk.txt       - text from example image
+example.slk.box       - example tesseract v2.0x box file
                         (with corrected errors)
-tv3.example.slk.box      - example tesseract v3.00 box file 
+tv3.example.slk.box   - example tesseract v3.00 box file 
                         (original with errors)
 error.example.slk.box - example of box file with error (missing symbol in 
                         line 4, additional data in line 8 and empty line 16)
+test_special.eng.tif  - test image for special symbols (fixed in r22)
+test_special.eng.box  - box file for special symbols test image

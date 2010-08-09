@@ -1,0 +1,3 @@
+test of special pyTesseractTrainer symbols:
+@ for bold, $ for italic and ' for underline.
+Some other symbols !§%+*/-.;,<>

@@ -40,7 +40,7 @@ from time import clock
 from datetime import datetime, date
 
 VERSION = '1.01'
-REVISION = '21'
+REVISION = '22'
 VERBOSE = 1  # if 1, than print additional information to standrard output
 DEBUG_SPEED = 0
 BASE_FONT = 'monospace'
@@ -185,21 +185,24 @@ def loadBoxData(boxName, height):
         line_nmbr += 1
         s = Symbol()
 
-        if (text.startswith('@')):
-            s.bold = True
-            text = text[1:]
-        #endif
-        if (text.startswith('$')):
-            s.italic = True
-            text = text[1:]
-        #endif
-        if (text.startswith("'")):
-            s.underline = True
-            text = text[1:]
+        # if there is more than 1 symbols in text, check for:
+        # bold, italic, underline
+        if len(text) > 1:
+            if '@' in text[:1]:
+                s.bold = True
+                text = text.replace('@', '', 1)
+            #endif
+            if '$' in text[:1]:
+                s.italic = True
+                text = text.replace('$', '', 1)
+            #endif
+            if "'" in text[:1]:
+                s.underline = True
+                text = text.replace("'", "", 1)
+            #endif
         #endif
 
         s.text = text
-
         s.left = int(left)
         s.right = int(right)
         s.top = height - int(top)
