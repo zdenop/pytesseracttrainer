@@ -40,7 +40,7 @@ from time import clock
 from datetime import datetime, date
 
 VERSION = '1.01'
-REVISION = '22'
+REVISION = '23'
 VERBOSE = 1  # if 1, than print additional information to standrard output
 DEBUG_SPEED = 0
 BASE_FONT = 'monospace'
@@ -510,7 +510,10 @@ class MainWindow:
 
     @print_timing
     def redrawArea(self, drawingArea, event):
+        '''reddraw area of selected symbol + add rectangle'''
         gc = drawingArea.get_style().fg_gc[gtk.STATE_NORMAL]
+        color = gtk.gdk.color_parse("red")
+        drawingArea.modify_fg(gtk.STATE_NORMAL, color)  # color of rectangle
         if self.pixbuf:
             drawingArea.window.draw_pixbuf(gc, self.pixbuf, 0, 0, 0, 0)
         #endif
@@ -743,28 +746,38 @@ class MainWindow:
         dialog.destroy()
     #enddef
 
-    # Looks 5 pixels to the left and right of the median divider
     @print_timing
     def findSplitPoint(self, symbol):
+        '''Looks 5 pixels to the left and right of the median divider'''
         subpixbuf = self.pixbuf.subpixbuf(symbol.left, symbol.top,
                                           symbol.right - symbol.left,
                                           symbol.bottom - symbol.top)
-        pixels = subpixbuf.get_pixels_array()
 
-        height = len(pixels)
-        width = len(pixels[0])
+        # get_pixels_array work only with PyGTK with support of Numeric
+        try:
+            pixels = subpixbuf.get_pixels_array()
 
-        bestX = -1
-        bestNumPixels = 1000000
+            height = len(pixels)
+            width = len(pixels[0])
+            bestX = -1
+            bestNumPixels = 1000000
 
-        for x in range(width // 2 - 5, width // 2 + 6):
-            numPixels = countBlackPixels(pixels, x)
-            # print x, numPixels
-            if numPixels < bestNumPixels:
-                bestX = x
-                bestNumPixels = numPixels
-            #endif
-        #endfor
+            for x in range(width // 2 - 5, width // 2 + 6):
+                numPixels = countBlackPixels(pixels, x)
+                # print x, numPixels
+                if numPixels < bestNumPixels:
+                    bestX = x
+                    bestNumPixels = numPixels
+                #endif
+            #endfor
+        except:  # workaround for missing support in PyGTK
+            error = "It looks like your PyGTK has no support for" + \
+                    "Numeric!\nCommand 'split' will not work best way."
+            #self.errorDialog(error, self.window)
+            if VERBOSE == 1:
+                print error
+            bestX = subpixbuf.get_width() / 2
+
         return bestX + symbol.left
     #enddef
 
