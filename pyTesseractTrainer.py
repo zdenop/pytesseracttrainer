@@ -40,7 +40,7 @@ from time import clock
 from datetime import datetime, date
 
 VERSION = '1.01'
-REVISION = '23'
+REVISION = '24'
 VERBOSE = 1  # if 1, than print additional information to standrard output
 DEBUG_SPEED = 0
 BASE_FONT = 'monospace'
@@ -60,6 +60,7 @@ MENU = '''<ui>
     </menu>
     <menu action="Help">
       <menuitem action="About"/>
+      <menuitem action="AboutMergeText"/>
       <menuitem action="Shortcuts"/>
     </menu>
   </menubar>
@@ -721,23 +722,51 @@ class MainWindow:
         dialog.destroy()
     #enddef
 
+    def doHelpAboutMerge(self, action):
+        dialog = gtk.Dialog('About Merge Text...', self.window,
+                            gtk.DIALOG_NO_SEPARATOR | gtk.DIALOG_MODAL,
+                            (gtk.STOCK_OK, gtk.RESPONSE_OK))
+        dialog.set_size_request(450, 200)
+        #dialog.vbox.set_spacing (5)      
+        font = pango.FontDescription ("Arial Bold 12")
+        label = gtk.Label ('Function: Merge Text\n')
+        label.modify_font (font)
+        label.show ()
+        dialog.vbox.pack_start (label, False, False)
+
+        label = gtk.Label(
+        'This function takes text form external file and put it to '
+        'currrent boxes. Number of boxes should fit tu number of '
+        'symbols in file. If they did not match, you should '
+        'split/join/delete symbols&boxs before running "Merge Text...".\n'
+        '\n'
+        'This is usefull if you have correct text from training image '
+        'in external file.' 
+            )
+        label.set_line_wrap (True)
+        label.show ()
+        dialog.vbox.pack_end (label, False, False)
+        dialog.run()
+        dialog.destroy()
+    #enddef
+
     @print_timing
     def doHelpShortcuts(self, action):
         dialog = gtk.Dialog('Keyboard shortcuts', self.window,
                             gtk.DIALOG_NO_SEPARATOR | gtk.DIALOG_MODAL,
                             (gtk.STOCK_OK, gtk.RESPONSE_OK))
-        dialog.set_size_request(450, 200)
+        dialog.set_size_request(450, 210)
         label = gtk.Label(
             'Keyboard shortcuts\n'
             '\n'
             'Ctrl-B: mark entire word as bold\n'
             'Ctrl-I: mark entire word as italic\n'
-            'Ctrl-U: mark current symbol as italic\n'
+            'Ctrl-U: mark current symbol as underline\n'
             'Ctrl-arrow: grow box up, down, left or right\n'
             'Ctrl-Shift-arrow: shrink box up, down, left or right\n'
-            'Ctrl-1: merge current symbol with next symbol\n'
-            'Ctrl-2: split current symbol vertically\n'
-            'Ctrl-D: delete current symbol\n'
+            'Ctrl-1: merge current symbol&box with next symbol\n'
+            'Ctrl-2: split current symbol&box vertically\n'
+            'Ctrl-D: delete current symbol&box\n'
             )
         label.set_line_wrap(True)
         dialog.vbox.pack_start(label, True, True, 0)
@@ -771,7 +800,7 @@ class MainWindow:
                 #endif
             #endfor
         except:  # workaround for missing support in PyGTK
-            error = "It looks like your PyGTK has no support for" + \
+            error = "It looks like your PyGTK has no support for " + \
                     "Numeric!\nCommand 'split' will not work best way."
             #self.errorDialog(error, self.window)
             if VERBOSE == 1:
@@ -927,14 +956,15 @@ class MainWindow:
               lambda w: gtk.main_quit()),
              ('File', None, '_File'),
              ('Commands', None, '_Commands'),
-             ('Split', None, '_Split Symbol', '<Control>2', None,
+             ('Split', None, '_Split Symbol&Box', '<Control>2', None,
               self.doCommandsSplit),
-             ('JoinWithNext', None, '_Join with Next Symbol', '<Control>1',
+             ('JoinWithNext', None, '_Join with Next Symbol&Box', '<Control>1',
               None, self.doCommandsJoin),
-             ('Delete', None, '_Delete Symbol', '<Control>D',
+             ('Delete', None, '_Delete Symbol&Box', '<Control>D',
               None, self.doCommandsDelete),
              ('Help', None, '_Help'),
              ('About', None, '_About', None, None, self.doHelpAbout),
+             ('AboutMergeText', None, 'About _Merge Text', None, None, self.doHelpAboutMerge),
              ('Shortcuts', None, '_Keyboard shotcuts', None, None,
               self.doHelpShortcuts),
              ])
