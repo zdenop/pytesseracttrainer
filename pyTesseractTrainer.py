@@ -45,7 +45,7 @@ from datetime import datetime
 # parameters
 
 VERSION = '1.01'
-REVISION = '25'
+REVISION = '27'
 VERBOSE = 0  # if 1, than print additional information to standrard output
 DEBUG_SPEED = 0
 BASE_FONT = 'monospace'
