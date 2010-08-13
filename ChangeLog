@@ -1,3 +1,12 @@
+Aug 13 2010      <zdenop at gmail.com>
+    * realse of version 1.01
+
+Aug 12 2010      <zdenop at gmail.com>
+    * added info about Merge Text
+
+Aug 10 2010      <zdenop at gmail.com>
+    * workaround for missing Numeric support in PyGTK
+
 Aug 09 2010      <zdenop at gmail.com>
     * buxfix for "symbol area is not clear when another image is open"
     * bugfix for $@' symbols (used for formating internally)
