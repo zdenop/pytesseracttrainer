@@ -51,7 +51,7 @@ from datetime import datetime
 # parameters
 
 VERSION = '1.02'
-REVISION = '29'
+REVISION = '30'
 VERBOSE = 0  # if 1, than print additional information to standrard output
 DEBUG_SPEED = 0
 BASE_FONT = 'monospace'
@@ -65,7 +65,7 @@ MENU = \
       <menuitem action="Save"/>
       <menuitem action="Quit"/>
     </menu>
-    <menu action="Commands">
+    <menu action="Edit">
       <menuitem action="Copy"/>
       <menuitem action="djvMap"/>
       <menuitem action="htmMap"/>
@@ -987,7 +987,7 @@ class MainWindow:
     # enddef
 
     @print_timing
-    def doCommandsCopy(self, action):
+    def doEditCopy(self, action):
         this = self.boxes[self.selectedRow][self.selectedColumn]
         coords = '%s %s %s %s' % (this.left, this.leftdown, this.right, this.rightup)
         clipboard = gtk.clipboard_get("CLIPBOARD")
@@ -995,7 +995,7 @@ class MainWindow:
     #enddef
 
     @print_timing
-    def doCommandsdjvMap(self, action):
+    def doEditdjvMap(self, action):
         this = self.boxes[self.selectedRow][self.selectedColumn]
         area_width = this.right - this.left
         area_height = this.rightup - this.leftdown
@@ -1006,7 +1006,7 @@ class MainWindow:
     #enddef
 
     @print_timing
-    def doCommandshtmMap(self, action):
+    def doEdithtmMap(self, action):
         this = self.boxes[self.selectedRow][self.selectedColumn]
         coords = '%s,%s,%s,%s' % (this.left, this.top, this.right, this.bottom)
         clipboard = gtk.clipboard_get("CLIPBOARD")
@@ -1058,7 +1058,7 @@ class MainWindow:
     # enddef
 
     @print_timing
-    def doCommandsSplit(self, action):
+    def doEditSplit(self, action):
         '''Split box/symbol'''
         if self.selectedRow == None:
             self.errorDialog('Click into a cell first.', self.window)
@@ -1107,7 +1107,7 @@ class MainWindow:
     # enddef
 
     @print_timing
-    def doCommandsJoin(self, action):
+    def doEditJoin(self, action):
         '''Join box/symbol with next box/symbol'''
         if self.selectedRow == None:
             self.errorDialog('Click into a cell first.', self.window)
@@ -1147,7 +1147,7 @@ class MainWindow:
     # enddef
 
     @print_timing
-    def doCommandsDelete(self, action):
+    def doEditDelete(self, action):
         '''Delete box/symbol'''
         if self.selectedRow == None:
             self.errorDialog('Click into a cell first.', self.window)
@@ -1210,7 +1210,7 @@ class MainWindow:
     def setSymbolControlSensitivity(self, bool):
         '''If symbols are not loaded actions will be blocked'''        
         self.buttonBox.set_sensitive(bool)
-        self.actionGroup.get_action('Commands').set_sensitive(bool)
+        self.actionGroup.get_action('Edit').set_sensitive(bool)
 
     # enddef
 
@@ -1230,19 +1230,19 @@ class MainWindow:
              ('Quit', gtk.STOCK_QUIT, None, None, None,
               lambda w: gtk.main_quit()),
              ('File', None, '_File'),
-             ('Commands', None, '_Commands'),
+             ('Edit', None, '_Edit'),
              ('Copy', None, '_Copy _tesseract coords', '<Control>T', None,
-              self.doCommandsCopy),
+              self.doEditCopy),
              ('djvMap', None, 'Copy _djvMap coords', '<Control>A', None,
-              self.doCommandsdjvMap),
+              self.doEditdjvMap),
              ('htmMap', None, 'Copy _htmMap coords', '<Control>M', None,
-              self.doCommandshtmMap),            
+              self.doEdithtmMap),            
              ('Split', None, '_Split Symbol&Box', '<Control>2', None,
-              self.doCommandsSplit),
+              self.doEditSplit),
              ('JoinWithNext', None, '_Join with Next Symbol&Box',
-              '<Control>1', None, self.doCommandsJoin),
+              '<Control>1', None, self.doEditJoin),
              ('Delete', None, '_Delete Symbol&Box', '<Control>D',
-              None, self.doCommandsDelete),
+              None, self.doEditDelete),
              ('Help', None, '_Help'),
              ('About', None, '_About', None, None, self.doHelpAbout),
              ('AboutMergeText', None, 'About _Merge Text', None, None,
