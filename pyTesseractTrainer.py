@@ -15,6 +15,11 @@
 # http://pytesseracttrainer.googlecode.com
 # http://sk-spell.sk.cx
 #
+# tesseractBoxEditor.py
+# Modified version for work with djvused
+# Modified by Mihail Radu Solcan
+# Last modification: 2008-12-28
+#
 # tesseractTrainer.py
 # Copyright 2007 Catalin Francu <cata at francu.com>
 #
@@ -60,6 +65,10 @@ MENU = \
       <menuitem action="Quit"/>
     </menu>
     <menu action="Commands">
+      <menuitem action="Copy"/>
+      <menuitem action="djvMap"/>
+      <menuitem action="htmMap"/>
+      <separator/>
       <menuitem action="Split"/>
       <menuitem action="JoinWithNext"/>
       <menuitem action="Delete"/>
@@ -80,6 +89,8 @@ DIR_LEFT = 0
 DIR_RIGHT = 1
 DIR_TOP = 2
 DIR_BOTTOM = 3
+DIR_RUp = 4
+DIR_LDown = 5
 
 
 def print_timing(func):
@@ -104,7 +115,9 @@ class Symbol:
     left = 0
     right = 0
     top = 0
+    rightup = 0
     bottom = 0
+    leftdown = 0
     bold = False
     italic = False
     underline = False
@@ -248,6 +261,11 @@ def loadBoxData(boxName, height):
         s.right = int(right)
         s.top = height - int(top)
         s.bottom = height - int(bottom)
+        # initial values for y coords as in tesseract
+        s.rightup = height - s.top
+        s.leftdown = height - s.bottom
+        # end initial values
+
         s.spaceBefore = s.left >= prevRight + 6 and prevRight != -1
 
         if s.left < prevRight - 10:
@@ -483,7 +501,10 @@ class MainWindow:
         self.spinLeft.set_value(s.left)
         self.spinRight.set_value(s.right)
         self.spinTop.set_value(s.top)
+        self.spinRUp.set_value(s.rightup)
         self.spinBottom.set_value(s.bottom)
+        self.spinLDown.set_value(s.leftdown)
+
         self.buttonUpdateInProgress = None
 
     # enddef
@@ -537,22 +558,21 @@ class MainWindow:
             self.buttonUpdateInProgress = None
             self.invalidateImage()
             return True
-        elif event.keyval == 65362:
-
-                                             # Up arrow
-
+        elif event.keyval == 65362:  # Up arrow
             self.buttonUpdateInProgress = True
             if shift:
                 s.top += 1
+                s.rightup -= 1
             else:
                 s.top -= 1
+                s.rightup += 1
+            self.spinTop.set_value(s.top)
+            self.spinRUp.set_value(s.rightup)
             self.spinTop.set_value(s.top)
             self.buttonUpdateInProgress = None
             self.invalidateImage()
             return True
-        elif event.keyval == 65363:
-
-                                             # Right arrow
+        elif event.keyval == 65363:  # Right arrow
 
             self.buttonUpdateInProgress = True
             if shift:
@@ -563,19 +583,20 @@ class MainWindow:
             self.buttonUpdateInProgress = None
             self.invalidateImage()
             return True
-        elif event.keyval == 65364:
-
-                                             # Down arrow
-
+        elif event.keyval == 65364:  # Down arrow
             self.buttonUpdateInProgress = True
             if shift:
                 s.bottom -= 1
+                s.leftdown += 1
             else:
                 s.bottom += 1
+                s.leftdown -= 1
             self.spinBottom.set_value(s.bottom)
+            self.spinLDown.set_value(s.leftdown)
             self.buttonUpdateInProgress = None
             self.invalidateImage()
             return True
+
 
         # endif
 
@@ -592,7 +613,7 @@ class MainWindow:
 
         value = int(button.get_value())
         s = self.boxes[self.selectedRow][self.selectedColumn]
-        prevValue = (s.left, s.right, s.top, s.bottom)[dir]
+        prevValue = (s.left, s.right, s.top, s.bottom, s.rightup, s.leftdown)[dir]
 
         if dir == DIR_LEFT:
             s.left = value
@@ -602,6 +623,10 @@ class MainWindow:
             s.top = value
         elif dir == DIR_BOTTOM:
             s.bottom = value
+        elif dir == DIR_RUp:
+            s.rightup = value
+        elif dir == DIR_LDown:
+            s.leftdown = value
 
         # endif
 
@@ -732,8 +757,10 @@ class MainWindow:
         self.spinRight.set_adjustment(gtk.Adjustment(0, 0,
                 self.pixbuf.get_width(), 1, 1))
         self.spinTop.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
-        self.spinBottom.set_adjustment(gtk.Adjustment(0, 0, height, 1,
-                1))
+        self.spinRUp.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
+        self.spinBottom.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
+        self.spinLDown.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
+
 
         self.setImageControlSensitivity(True)
         self.selectedRow = 0
@@ -882,12 +909,13 @@ class MainWindow:
         dialog = gtk.Dialog('About pyTesseractTrainer', self.window,
                             gtk.DIALOG_NO_SEPARATOR | gtk.DIALOG_MODAL,
                             (gtk.STOCK_OK, gtk.RESPONSE_OK))
-        dialog.set_size_request(450, 200)
+        dialog.set_size_request(450, 250)
         label = gtk.Label(
             'pyTesseractTrainer version %s, revision: %s\n'
             'website: pytesseracttrainer.googlecode.com\n'
             '\n'
             'Copyright 2010 Zdenko Podobný <zdenop at gmail.com>\n'
+            'Copyright 2008 Mihail Radu Solcan (djvused and image maps)\n'
             'Copyright 2007 Cătălin Frâncu <cata at francu.com>\n'
             '\n'
             'This program is free software: you can redistribute it and/or '
@@ -905,7 +933,7 @@ class MainWindow:
         dialog = gtk.Dialog('About Merge Text...', self.window,
                             gtk.DIALOG_NO_SEPARATOR | gtk.DIALOG_MODAL,
                             (gtk.STOCK_OK, gtk.RESPONSE_OK))
-        dialog.set_size_request(450, 200)
+        dialog.set_size_request(450, 250)
 
         font = pango.FontDescription('Arial Bold 12')
         label = gtk.Label('Function: Merge Text\n')
@@ -934,7 +962,7 @@ class MainWindow:
         dialog = gtk.Dialog('Keyboard shortcuts', self.window,
                             gtk.DIALOG_NO_SEPARATOR | gtk.DIALOG_MODAL,
                             (gtk.STOCK_OK, gtk.RESPONSE_OK))
-        dialog.set_size_request(450, 210)
+        dialog.set_size_request(450, 250)
         label = gtk.Label(
             'Keyboard shortcuts\n'
             '\n'
@@ -945,6 +973,9 @@ class MainWindow:
             'Ctrl-Shift-arrow: shrink box up, down, left or right\n'
             'Ctrl-1: merge current symbol&box with next symbol\n'
             'Ctrl-2: split current symbol&box vertically\n'
+            'Ctrl-C: copy coordinates (djvu txt style)\n'
+            'Ctrl-A: copy coordinates (djvu ant style)\n'
+            'Ctrl-M: copy coordinates (html image map style)\n'          
             'Ctrl-D: delete current symbol&box\n')
         label.set_line_wrap(True)
         dialog.vbox.pack_start(label, True, True, 0)
@@ -953,6 +984,33 @@ class MainWindow:
         dialog.destroy()
 
     # enddef
+
+    @print_timing
+    def doCommandsCopy(self, action):
+        this = self.boxes[self.selectedRow][self.selectedColumn]
+        coords = '%s %s %s %s' % (this.left, this.leftdown, this.right, this.rightup)
+        clipboard = gtk.clipboard_get("CLIPBOARD")
+        clipboard.set_text(coords, len=-1)
+    #enddef
+
+    @print_timing
+    def doCommandsdjvMap(self, action):
+        this = self.boxes[self.selectedRow][self.selectedColumn]
+        area_width = this.right - this.left
+        area_height = this.rightup - this.leftdown
+        coords = '%s %s %s %s' % \
+                (this.left, this.leftdown, area_width, area_height)
+        clipboard = gtk.clipboard_get("CLIPBOARD")
+        clipboard.set_text(coords, len=-1)
+    #enddef
+
+    @print_timing
+    def doCommandshtmMap(self, action):
+        this = self.boxes[self.selectedRow][self.selectedColumn]
+        coords = '%s,%s,%s,%s' % (this.left, this.top, this.right, this.bottom)
+        clipboard = gtk.clipboard_get("CLIPBOARD")
+        clipboard.set_text(coords, len=-1)
+    #enddef
 
     @print_timing
     def findSplitPoint(self, symbol):
@@ -1040,7 +1098,9 @@ class MainWindow:
         self.spinLeft.set_value(this.left)
         self.spinRight.set_value(this.right)
         self.spinTop.set_value(this.top)
+        self.spinRUp.set_value(this.rightup)
         self.spinBottom.set_value(this.bottom)
+        self.spinLDown.set_value(this.leftdown)
         self.buttonUpdateInProgress = None
 
     # enddef
@@ -1078,7 +1138,9 @@ class MainWindow:
         self.spinLeft.set_value(this.left)
         self.spinRight.set_value(this.right)
         self.spinTop.set_value(this.top)
+        self.spinRUp.set_value(this.rightup)
         self.spinBottom.set_value(this.bottom)
+        self.spinLDown.set_value(this.leftdown)
         self.buttonUpdateInProgress = None
 
     # enddef
@@ -1137,6 +1199,7 @@ class MainWindow:
 
     @print_timing
     def setImageControlSensitivity(self, bool):
+        '''If image is not open menu actions will be blocked'''
         self.actionGroup.get_action('MergeText').set_sensitive(bool)
         self.actionGroup.get_action('Save').set_sensitive(bool)
 
@@ -1144,6 +1207,7 @@ class MainWindow:
 
     @print_timing
     def setSymbolControlSensitivity(self, bool):
+        '''If symbols are not loaded actions will be blocked'''        
         self.buttonBox.set_sensitive(bool)
         self.actionGroup.get_action('Commands').set_sensitive(bool)
 
@@ -1166,6 +1230,12 @@ class MainWindow:
               lambda w: gtk.main_quit()),
              ('File', None, '_File'),
              ('Commands', None, '_Commands'),
+             ('Copy', None, '_Copy _tesseract coords', '<Control>T', None,
+              self.doCommandsCopy),
+             ('djvMap', None, 'Copy _djvMap coords', '<Control>A', None,
+              self.doCommandsdjvMap),
+             ('htmMap', None, 'Copy _htmMap coords', '<Control>M', None,
+              self.doCommandshtmMap),            
              ('Split', None, '_Split Symbol&Box', '<Control>2', None,
               self.doCommandsSplit),
              ('JoinWithNext', None, '_Join with Next Symbol&Box',
@@ -1197,7 +1267,7 @@ class MainWindow:
                               + 'Editor version %s, revision:%s'
                               % (VERSION, REVISION))
         self.window.connect('destroy', lambda w: gtk.main_quit())
-        self.window.set_size_request(800, 600)
+        self.window.set_size_request(900, 600)
 
         vbox = gtk.VBox(False, 2)
         self.window.add(vbox)
@@ -1260,7 +1330,7 @@ class MainWindow:
                                 DIR_BOTTOM)
         self.buttonBox.pack_end(self.spinBottom, False, False, 0)
         self.spinBottom.show()
-        l = gtk.Label('     Bottom:')
+        l = gtk.Label(' Bottom:')
         self.buttonBox.pack_end(l, False, False, 0)
         l.show()
 
@@ -1269,7 +1339,15 @@ class MainWindow:
                              DIR_TOP)
         self.buttonBox.pack_end(self.spinTop, False, False, 0)
         self.spinTop.show()
-        l = gtk.Label('     Top:')
+        l = gtk.Label(' Top:')
+        self.buttonBox.pack_end(l, False, False, 0)
+        l.show()
+
+        self.spinRUp = gtk.SpinButton()
+        self.spinRUp.connect("changed", self.onSpinButtonChanged, DIR_RUp)
+        self.buttonBox.pack_end(self.spinRUp, False, False, 0)
+        self.spinRUp.show()
+        l = gtk.Label("  r-up:");
         self.buttonBox.pack_end(l, False, False, 0)
         l.show()
 
@@ -1278,7 +1356,15 @@ class MainWindow:
                                DIR_RIGHT)
         self.buttonBox.pack_end(self.spinRight, False, False, 0)
         self.spinRight.show()
-        l = gtk.Label('     Right:')
+        l = gtk.Label(' Right:')
+        self.buttonBox.pack_end(l, False, False, 0)
+        l.show()
+
+        self.spinLDown = gtk.SpinButton()
+        self.spinLDown.connect("changed", self.onSpinButtonChanged, DIR_LDown)
+        self.buttonBox.pack_end(self.spinLDown, False, False, 0)
+        self.spinLDown.show()
+        l = gtk.Label("  l-down:");
         self.buttonBox.pack_end(l, False, False, 0)
         l.show()
 
