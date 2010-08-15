@@ -43,14 +43,15 @@ pygtk.require('2.0')
 import gtk
 import pango
 import sys
+import os
 import codecs
 from time import clock
 from datetime import datetime
 
 # parameters
 
-VERSION = '1.01'
-REVISION = '27'
+VERSION = '1.02'
+REVISION = '29'
 VERBOSE = 0  # if 1, than print additional information to standrard output
 DEBUG_SPEED = 0
 BASE_FONT = 'monospace'
@@ -1380,6 +1381,16 @@ class MainWindow:
         self.setImageControlSensitivity(False)
         self.setSymbolControlSensitivity(False)
         self.window.show()
+
+        if len(sys.argv)>=2 and sys.argv[1] != "":
+            argfileName=sys.argv[1]
+            argcurrentdir = os.path.dirname(sys.argv[1])
+            self.loadImageAndBoxes(argfileName, self.window)
+            argbaseFileName = os.path.basename(argfileName)
+        else:
+            argfileName=None
+            argcurrentdir = os.path.dirname(sys.argv[0])
+        self.isPaused = False;
 
 
     # enddef
