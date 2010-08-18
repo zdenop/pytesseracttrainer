@@ -44,6 +44,7 @@ import gtk, numpy
 import pango
 import sys
 import os
+import shutil
 import codecs
 from time import clock
 from datetime import datetime
@@ -190,6 +191,36 @@ class Symbol:
 
     # enddef
 # endclass
+
+def safe_backup(path, keep_original=True):
+    """
+    Rename a file or directory safely without overwriting an existing 
+    backup of the same name.
+    http://www.5dollarwhitebox.org/drupal/node/91
+    """
+    count = -1
+    new_path = None
+    while True:
+        if os.path.exists(path):
+            if count == -1:
+                new_path = "%s.bak" % (path)
+            else:
+                new_path = "%s.bak.%s" % (path, count)
+            if os.path.exists(new_path):
+                count += 1
+                continue
+            else:
+                if keep_original:
+                    if os.path.isfile(path):
+                        shutil.copy(path, new_path)
+                    elif os.path.isdir(path):
+                        shutil.copytree(path, new_path)
+                else:
+                    shutil.move(path, new_path)
+                break
+        else:
+            break
+    return new_path
 
 def find_format(boxName):
     ''''find format of box file'''
@@ -898,7 +929,14 @@ class MainWindow:
 
         height = self.pixbuf.get_height()
 
-        f = open(self.loadedBoxFile + ".tmp", 'w')
+        path = self.loadedBoxFile
+        bak_path = safe_backup(path)
+        if bak_path:
+            print '%s safely backed up as %s' % (path, bak_path)
+        else:
+            print '%s does not exist, nothing to backup' % path
+
+        f= open(self.loadedBoxFile, 'w')
         for row in self.boxes:
             for s in row:
                 text = s.text
