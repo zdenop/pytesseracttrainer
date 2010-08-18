@@ -40,7 +40,7 @@ pyTesseractTrainer is successor of tesseractTrainer.py
 """
 import pygtk
 pygtk.require('2.0')
-import gtk
+import gtk, numpy
 import pango
 import sys
 import os
@@ -51,8 +51,9 @@ from datetime import datetime
 # parameters
 
 VERSION = '1.02'
-REVISION = '30'
-VERBOSE = 0  # if 1, than print additional information to standrard output
+REVISION = '31'
+VERBOSE = 1  # if 1, than print additional information to standrard output
+SAVE_FORMAT = 3  # tesseract v3 box format
 DEBUG_SPEED = 0
 BASE_FONT = 'monospace'
 
@@ -119,6 +120,7 @@ class Symbol:
     rightup = 0
     bottom = 0
     leftdown = 0
+    page = 0
     bold = False
     italic = False
     underline = False
@@ -159,6 +161,7 @@ class Symbol:
         s.right = self.right
         s.top = self.top
         s.bottom = self.bottom
+        s.page = self.page
         s.bold = self.bold
         s.italic = self.italic
         s.underline = self.underline
@@ -181,18 +184,45 @@ class Symbol:
 
     @print_timing
     def __str__(self):
-        return 'Text [%s] L%d R%d T%d B%d' % (self.text, self.left,
-                self.right, self.top, self.bottom)
+        return 'Text [%s] L%d R%d T%d B%d P%d' % (self.text, self.left,
+                self.right, self.top, self.bottom, self.page)
 
 
     # enddef
 # endclass
 
+def find_format(boxName):
+    ''''find format of box file'''
+    f = open(boxName,'r')
+    format_set = set()
+    for line in f:
+        format_set.add(len(line.split()))
+    f.close
+
+    if len(format_set) == 1: # file is ok - it has only one format
+        if 5 in format_set:
+            return 2  # tesseract 2 box format
+        if 6 in format_set:
+            return 3  # tesseract 3 box format
+    else:  # there lines with different formats!!!
+        # message = "Unknown format of line %s:\n'%s'\nin box file '%s'!" \
+                # % (str(line_nmbr), line.strip(), boxName)
+        dialog = gtk.MessageDialog(parent=None,
+                buttons=gtk.BUTTONS_CLOSE,
+                flags=gtk.DIALOG_DESTROY_WITH_PARENT,
+                type=gtk.MESSAGE_WARNING, message_format=message)
+        dialog.set_title('Error in box file!')
+        dialog.run()
+        dialog.destroy()
+        sys.exit()  # TODO: do not kill application  please ;-)
+    print format_set
 
 @print_timing
 def loadBoxData(boxName, height):
     '''Returns a list of lines. Each line contains a list of symbols
     FIELD_* constants.'''
+
+    open_format = find_format(boxName)
 
     f = codecs.open(boxName, 'r', 'utf-8')
     if VERBOSE > 0:
@@ -201,12 +231,11 @@ def loadBoxData(boxName, height):
     symbolLine = []
     prevRight = -1
     line_nmbr = 1
+    page = 0
 
+    # TODO - prerobiť -> urobiť test na formát, na "integritu dát"
     for line in f:
-        if len(line.split()) == 6:
-
-            # tesseract 3.00
-
+        if open_format == 3:
             (
                 text,
                 left,
@@ -215,22 +244,9 @@ def loadBoxData(boxName, height):
                 top,
                 page,
                 ) = line.split()
-        elif len(line.split()) == 5:
-
-            # tesseract < 2.0x
-
+        elif open_format == 2:
             (text, left, bottom, right, top) = line.split()
-        else:
-            message = "Unknown format of line %s:\n'%s'\nin box file '%s'!" \
-                % (str(line_nmbr), line.strip(), boxName)
-            dialog = gtk.MessageDialog(parent=None,
-                    buttons=gtk.BUTTONS_CLOSE,
-                    flags=gtk.DIALOG_DESTROY_WITH_PARENT,
-                    type=gtk.MESSAGE_WARNING, message_format=message)
-            dialog.set_title('Error in box file!')
-            dialog.run()
-            dialog.destroy()
-            sys.exit()  # TODO: do not kill application  please ;-)
+
         line_nmbr += 1
         s = Symbol()
 
@@ -262,6 +278,7 @@ def loadBoxData(boxName, height):
         s.right = int(right)
         s.top = height - int(top)
         s.bottom = height - int(bottom)
+        s.page = int(page)
         # initial values for y coords as in tesseract
         s.rightup = height - s.top
         s.leftdown = height - s.bottom
@@ -384,8 +401,8 @@ class MainWindow:
         col,
         ):
         if VERBOSE > 1:
-            print datetime.now(), u"symbol: '', row: '%s', col: '%s'" \
-                % (row, col)
+            print datetime.now(), u"symbol: '', row: '%s', col: '%s', page: '%s'" \
+                % (row, col, symbol.page)
         symbol.entry = gtk.Entry(10)
         symbol.entry.set_text(symbol.text)
         symbol.entry.set_width_chars(len(unicode(symbol.text)))
@@ -673,7 +690,7 @@ class MainWindow:
 
     @print_timing
     def redrawArea(self, drawingArea, event):
-        '''reddraw area of selected symbol + add rectangle'''
+        '''redraw area of selected symbol + add rectangle'''
 
         gc = drawingArea.get_style().fg_gc[gtk.STATE_NORMAL]
         color = gtk.gdk.color_parse('red')
@@ -707,42 +724,49 @@ class MainWindow:
     # enddef
 
     @print_timing
-    def loadImageAndBoxes(self, imageName, fileChooser):
-        (name, extension) = imageName.rsplit('.', 1)
-        boxName = name + '.box'
-
-        # Make sure that the image exists
-
+    def filecheck(self, imageName):
+        '''
+        Make sure that the image, box files exists
+        find box file format
+        '''
         try:
             f = open(imageName, 'r')
             f.close()
         except IOError:
-            self.errorDialog('Cannot find the specified file',
-                             fileChooser)
+            self.errorDialog('Cannot find the %s file' % imageName,
+                             self.window)
             return False
 
-        # endtry
+        boxName = imageName.rsplit('.', 1)[0] + '.box'
+        try:
+            f = open(boxName, 'r')
+            f.close()
+        except IOError:
+            self.errorDialog('Cannot find the %s file' % boxName,
+                             self.window)
+            return False
+        return True
+
+    @print_timing
+    def loadImageAndBoxes(self, imageName, fileChooser):
+        (name, extension) = imageName.rsplit('.', 1)
+        boxName = name + '.box'
+
+        file_ok = self.filecheck(imageName)
+        if file_ok == False:
+            return False
+
+        self.pixbuf = gtk.gdk.pixbuf_new_from_file(imageName)
+        height = self.pixbuf.get_height()
+        self.boxes = loadBoxData(boxName, height)
+        self.loadedBoxFile = boxName
+        self.window.set_title('pyTesseractTrainer: %s' % boxName)
 
         if VERBOSE > 0:
             print datetime.now(), 'File %s is opened.' % imageName
-        self.pixbuf = gtk.gdk.pixbuf_new_from_file(imageName)
-        height = self.pixbuf.get_height()
-
-        try:
-            self.boxes = loadBoxData(boxName, height)
-            self.loadedBoxFile = boxName
-            self.window.set_title('pyTesseractTrainer: %s' % boxName)
-        except IOError:
-            message = 'Cannot load image,' + \
-                'because there is no corresponding box file'
-            self.errorDialog(message, fileChooser)
-            return False
-
-        # endtry
 
         if VERBOSE > 0:
             print datetime.now(), 'Displaying image...'
-        self.pixbuf = gtk.gdk.pixbuf_new_from_file(imageName)
         self.drawingArea.set_size_request(self.pixbuf.get_width(),
                 height)
         if VERBOSE > 0:
@@ -750,7 +774,6 @@ class MainWindow:
         self.populateTextVBox()
 
         # Set adjustments on all spin buttons
-
         if VERBOSE > 0:
             print datetime.now(), 'Adjusting all spin buttons...'
         self.spinLeft.set_adjustment(gtk.Adjustment(0, 0,
@@ -761,7 +784,6 @@ class MainWindow:
         self.spinRUp.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
         self.spinBottom.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
         self.spinLDown.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
-
 
         self.setImageControlSensitivity(True)
         self.selectedRow = 0
@@ -876,7 +898,7 @@ class MainWindow:
 
         height = self.pixbuf.get_height()
 
-        f = open(self.loadedBoxFile, 'w')
+        f = open(self.loadedBoxFile + ".tmp", 'w')
         for row in self.boxes:
             for s in row:
                 text = s.text
@@ -895,13 +917,19 @@ class MainWindow:
 
                 # endif
 
-                f.write('%s %d %d %d %d\n' % (text, s.left, height
-                        - s.bottom, s.right, height - s.top))
+                if  SAVE_FORMAT == 2:
+                    f.write('%s %d %d %d %d\n' % (text, s.left, height
+                            - s.bottom, s.right, height - s.top))
+                else:
+                    f.write('%s %d %d %d %d %d\n' % (text, s.left, height
+                            - s.bottom, s.right, height - s.top, s.page))
+
 
             # endfor
         # endfor
 
         f.close()
+        # TODO: rename
 
     # enddef
 
@@ -976,7 +1004,7 @@ class MainWindow:
             'Ctrl-2: split current symbol&box vertically\n'
             'Ctrl-C: copy coordinates (djvu txt style)\n'
             'Ctrl-A: copy coordinates (djvu ant style)\n'
-            'Ctrl-M: copy coordinates (html image map style)\n'          
+            'Ctrl-M: copy coordinates (html image map style)\n'
             'Ctrl-D: delete current symbol&box\n')
         label.set_line_wrap(True)
         dialog.vbox.pack_start(label, True, True, 0)
@@ -1208,7 +1236,7 @@ class MainWindow:
 
     @print_timing
     def setSymbolControlSensitivity(self, bool):
-        '''If symbols are not loaded actions will be blocked'''        
+        '''If symbols are not loaded actions will be blocked'''
         self.buttonBox.set_sensitive(bool)
         self.actionGroup.get_action('Edit').set_sensitive(bool)
 
@@ -1223,7 +1251,7 @@ class MainWindow:
         self.actionGroup.add_actions(
             [('Open', gtk.STOCK_OPEN, '_Open Image...', None, None,
               self.doFileOpen),
-             ('MergeText', None, 'Merge _Text...', '<Control>T', None,
+             ('MergeText', None, '_Merge Text...', '<Control>3', None,
               self.doFileMergeText),
              ('Save', gtk.STOCK_SAVE, '_Save Box Info', None, None,
               self.doFileSave),
@@ -1231,12 +1259,12 @@ class MainWindow:
               lambda w: gtk.main_quit()),
              ('File', None, '_File'),
              ('Edit', None, '_Edit'),
-             ('Copy', None, '_Copy _tesseract coords', '<Control>T', None,
+             ('Copy', None, 'Copy _tesseract coords', '<Control>T', None,
               self.doEditCopy),
              ('djvMap', None, 'Copy _djvMap coords', '<Control>A', None,
               self.doEditdjvMap),
              ('htmMap', None, 'Copy _htmMap coords', '<Control>M', None,
-              self.doEdithtmMap),            
+              self.doEdithtmMap),
              ('Split', None, '_Split Symbol&Box', '<Control>2', None,
               self.doEditSplit),
              ('JoinWithNext', None, '_Join with Next Symbol&Box',
@@ -1245,7 +1273,7 @@ class MainWindow:
               None, self.doEditDelete),
              ('Help', None, '_Help'),
              ('About', None, '_About', None, None, self.doHelpAbout),
-             ('AboutMergeText', None, 'About _Merge Text', None, None,
+             ('AboutMergeText', None, 'About Merge Text', None, None,
                 self.doHelpAboutMerge),
              ('Shortcuts', None, '_Keyboard shotcuts', None, None,
               self.doHelpShortcuts),
