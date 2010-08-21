@@ -52,7 +52,7 @@ from datetime import datetime
 # parameters
 
 VERSION = '1.02'
-REVISION = '31'
+REVISION = '33'
 VERBOSE = 1  # if 1, than print additional information to standrard output
 SAVE_FORMAT = 3  # tesseract v3 box format
 DEBUG_SPEED = 0
@@ -236,8 +236,9 @@ def find_format(boxName):
         if 6 in format_set:
             return 3  # tesseract 3 box format
     else:  # there lines with different formats!!!
-        # message = "Unknown format of line %s:\n'%s'\nin box file '%s'!" \
-                # % (str(line_nmbr), line.strip(), boxName)
+        #message = "Unknown format of line %s:\n'%s'\nin box file '%s'!" \
+        #         % (str(line_nmbr), line.strip(), boxName)
+        message = "Unknown format of box file."
         dialog = gtk.MessageDialog(parent=None,
                 buttons=gtk.BUTTONS_CLOSE,
                 flags=gtk.DIALOG_DESTROY_WITH_PARENT,
