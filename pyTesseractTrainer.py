@@ -52,7 +52,7 @@ from datetime import datetime
 # parameters
 
 VERSION = '1.02'
-REVISION = '33'
+REVISION = '34'
 VERBOSE = 1  # if 1, than print additional information to standrard output
 SAVE_FORMAT = 3  # tesseract v3 box format
 DEBUG_SPEED = 0
@@ -238,7 +238,10 @@ def find_format(boxName):
     else:  # there lines with different formats!!!
         #message = "Unknown format of line %s:\n'%s'\nin box file '%s'!" \
         #         % (str(line_nmbr), line.strip(), boxName)
-        message = "Unknown format of box file."
+        message = "Wrong format of box file"
+        if VERBOSE > 0:
+			message =  message + " (%s)" % format_set
+        message =  message + "."
         dialog = gtk.MessageDialog(parent=None,
                 buttons=gtk.BUTTONS_CLOSE,
                 flags=gtk.DIALOG_DESTROY_WITH_PARENT,
@@ -246,8 +249,7 @@ def find_format(boxName):
         dialog.set_title('Error in box file!')
         dialog.run()
         dialog.destroy()
-        sys.exit()  # TODO: do not kill application  please ;-)
-    print format_set
+        return -1 # wrong format of box file
 
 @print_timing
 def loadBoxData(boxName, height):
@@ -255,6 +257,9 @@ def loadBoxData(boxName, height):
     FIELD_* constants.'''
 
     open_format = find_format(boxName)
+    
+    if open_format == -1:
+		return -1 # wrong format of box file
 
     f = codecs.open(boxName, 'r', 'utf-8')
     if VERBOSE > 0:
@@ -265,7 +270,6 @@ def loadBoxData(boxName, height):
     line_nmbr = 1
     page = 0
 
-    # TODO - prerobiť -> urobiť test na formát, na "integritu dát"
     for line in f:
         if open_format == 3:
             (
@@ -791,6 +795,12 @@ class MainWindow:
         self.pixbuf = gtk.gdk.pixbuf_new_from_file(imageName)
         height = self.pixbuf.get_height()
         self.boxes = loadBoxData(boxName, height)
+        if self.boxes == -1:  # wrong format of box file
+			self.pixbuf = ""  # clear area
+			self.selectedRow = None
+			self.textVBox.foreach(lambda widget: \
+                              self.textVBox.remove(widget))
+			return False
         self.loadedBoxFile = boxName
         self.window.set_title('pyTesseractTrainer: %s' % boxName)
 
