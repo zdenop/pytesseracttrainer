@@ -52,7 +52,7 @@ from datetime import datetime
 # parameters
 
 VERSION = '1.02'
-REVISION = '35'
+REVISION = '36'
 VERBOSE = 1  # if 1, than print additional information to standrard output
 SAVE_FORMAT = 3  # tesseract v3 box format
 DEBUG_SPEED = 0
@@ -101,12 +101,12 @@ def print_timing(func):
 
     def wrapper(*arg):
         '''time calculation'''
-        t1 = clock()
+        tm1 = clock()
         res = func(*arg)
-        t2 = clock()
+        tm2 = clock()
         if DEBUG_SPEED == 1:
             print datetime.now(), '%s took %0.3f ms' % (func.func_name,
-                    (t2 - t1) * 1000.0)
+                    (tm2 - tm1) * 1000.0)
         return res
 
     return wrapper
@@ -163,6 +163,8 @@ class Symbol:
         s.top = self.top
         s.bottom = self.bottom
         s.page = self.page
+        s.rightup = self.rightup
+        s.leftdown = self.leftdown
         s.bold = self.bold
         s.italic = self.italic
         s.underline = self.underline
@@ -185,9 +187,9 @@ class Symbol:
 
     @print_timing
     def __str__(self):
-        return 'Text [%s] L%d R%d T%d B%d P%d' % (self.text, self.left,
-                self.right, self.top, self.bottom, self.page)
-
+        return 'Text [%s] L%d R%d T%d B%d P%d LD%d RU%d' % (self.text,
+                self.left, self.right, self.top, self.bottom, self.page,
+                self.leftdown,  self.rightup)
 
     # enddef
 # endclass
@@ -278,7 +280,7 @@ def loadBoxData(boxname, height):
     if open_format == -1:
         return -1 # wrong format of box file
 
-    f = codecs.open(boxname, 'r', 'utf-8')
+    fbn = codecs.open(boxname, 'r', 'utf-8')
     if VERBOSE > 0:
         print datetime.now(), 'File %s is opened.' % boxname
     result = []
@@ -286,16 +288,9 @@ def loadBoxData(boxname, height):
     prevRight = -1
     page = 0
 
-    for line in f:
+    for line in fbn:
         if open_format == 3:
-            (
-                text,
-                left,
-                bottom,
-                right,
-                top,
-                page,
-                ) = line.split()
+            (text, left, bottom, right, top, page) = line.split()
         elif open_format == 2:
             (text, left, bottom, right, top) = line.split()
 
@@ -327,13 +322,13 @@ def loadBoxData(boxname, height):
         s.text = text
         s.left = int(left)
         s.right = int(right)
-        s.top = height - int(top)
-        s.bottom = height - int(bottom)
-        s.page = int(page)
         # initial values for y coords as in tesseract
-        s.rightup = height - s.top
-        s.leftdown = height - s.bottom
-        # end initial values
+        s.rightup = int(top)
+        s.leftdown = int(bottom)
+        # end initial values        
+        s.top = height - s.rightup
+        s.bottom = height - s.leftdown
+        s.page = int(page)
 
         s.spaceBefore = s.left >= prevRight + 6 and prevRight != -1
 
@@ -349,19 +344,18 @@ def loadBoxData(boxname, height):
     # endfor
 
     result.append(symbolLine)
-    f.close()
+    fbn.close()
     return result
 
 # enddef
 
-# Ensures that the adjustment is set to include the range of size "size"
-# starting at "start"
-
-
 @print_timing
 def ensureVisible(adjustment, start, size):
-    '''Compute the visible range'''
-
+    '''
+    Ensures that the adjustment is set to include the range of size "size"
+    starting at "start"
+    '''
+    # Compute the visible range
     visLo = adjustment.value
     visHi = adjustment.value + adjustment.page_size
     if start <= visLo or start + size >= visHi:
@@ -470,6 +464,7 @@ class MainWindow:
 
     @print_timing
     def invalidateImage(self):
+        '''refresh image'''
         (width, height) = self.drawingArea.window.get_size()
         self.drawingArea.window.invalidate_rect((0, 0, width, height),
                 False)
@@ -478,6 +473,7 @@ class MainWindow:
 
     @print_timing
     def onCheckButtonToggled(self, widget, attr):
+        '''Set atribut to symbol'''
         if self.buttonUpdateInProgress or self.selectedRow == None:
             return
 
@@ -534,13 +530,7 @@ class MainWindow:
     # enddef
 
     @print_timing
-    def onEntryFocus(
-        self,
-        entry,
-        ignored,
-        row,
-        column,
-        ):
+    def onEntryFocus(self, entry, ignored, row, column):
         self.selectedRow = row
         self.selectedColumn = column
 
@@ -566,8 +556,19 @@ class MainWindow:
         self.italicButton.set_active(s.italic)
         self.underlineButton.set_active(s.underline)
 
-        # Update the spin buttons
+        # Set adjustments/limits on all spin buttons
+        i_height = self.pixbuf.get_height()
+        i_width = self.pixbuf.get_width()
+        self.spinLeft.set_adjustment(gtk.Adjustment(0, 0, s.right, 1, 10))
+        self.spinRight.set_adjustment(gtk.Adjustment(0, s.left, i_width, 1, 10))
+        self.spinTop.set_adjustment(gtk.Adjustment(0, 0, s.bottom, 1, 10))
+        self.spinRUp.set_adjustment(gtk.Adjustment(0, s.leftdown, i_height,
+                                                   1, 10))
+        self.spinBottom.set_adjustment(gtk.Adjustment(0, s.top, i_height,
+                                                      1, 10))
+        self.spinLDown.set_adjustment(gtk.Adjustment(0, 0, s.rightup, 1, 10))
 
+        # Update the spin buttons
         self.spinLeft.set_value(s.left)
         self.spinRight.set_value(s.right)
         self.spinTop.set_value(s.top)
@@ -580,12 +581,7 @@ class MainWindow:
     # enddef
 
     @print_timing
-    def onEntryChanged(
-        self,
-        entry,
-        row,
-        col,
-        ):
+    def onEntryChanged(self, entry, row, col):
         symbol = self.boxes[row][col]
         symbol.text = entry.get_text()
         symbol.underline = symbol.text.startswith("'")
@@ -604,13 +600,7 @@ class MainWindow:
     # Intercept ctrl-arrow and ctrl-shift-arrow
 
     @print_timing
-    def onEntryKeyPress(
-        self,
-        entry,
-        event,
-        row,
-        col,
-        ):
+    def onEntryKeyPress(self, entry, event, row, col):
         if not event.state & gtk.gdk.CONTROL_MASK:
             return False
 
@@ -685,33 +675,60 @@ class MainWindow:
         s = self.boxes[self.selectedRow][self.selectedColumn]
         prevValue = (s.left, s.right, s.top, s.bottom, s.rightup, \
                      s.leftdown)[dir]
-
+        i_height = self.pixbuf.get_height()
+        i_width = self.pixbuf.get_width()
+        
         if dir == DIR_LEFT:
             s.left = value
+            self.spinRight.set_adjustment(gtk.Adjustment(s.right, s.left,
+                                                         i_width, 1, 10))
         elif dir == DIR_RIGHT:
             s.right = value
+            self.spinLeft.set_adjustment(gtk.Adjustment(s.left, 0, 
+                                                        s.right, 1, 10))
         elif dir == DIR_TOP:
             s.top = value
+            s.rightup = s.rightup + prevValue - value
+            self.spinRUp.set_value(s.rightup)
+            self.spinBottom.set_adjustment(gtk.Adjustment(s.bottom, s.top,
+                                                          i_height, 1, 10))
+            self.spinLDown.set_adjustment(gtk.Adjustment(s.leftdown, 0,
+                                                         s.rightup, 1, 10))
         elif dir == DIR_BOTTOM:
             s.bottom = value
+            s.leftdown = s.leftdown + prevValue - value
+            self.spinLDown.set_value(s.leftdown)
+            self.spinTop.set_adjustment(gtk.Adjustment(s.top, 0,
+                                                       s.bottom, 1, 10))
+            self.spinRUp.set_adjustment(gtk.Adjustment(s.rightup, s.leftdown,
+                                                       i_height, 1, 10))
         elif dir == DIR_RUP:
             s.rightup = value
+            s.top = s.top + prevValue - value
+            self.spinTop.set_value(s.top)
+            self.spinBottom.set_adjustment(gtk.Adjustment(s.bottom, s.top,
+                                                          i_height, 1, 10))
+            self.spinLDown.set_adjustment(gtk.Adjustment(s.leftdown, 0,
+                                                         s.rightup, 1, 10))
         elif dir == DIR_LDOWN:
             s.leftdown = value
-
+            s.bottom = s.bottom + prevValue - value
+            self.spinBottom.set_value(s.bottom)
+            self.spinTop.set_adjustment(gtk.Adjustment(s.top, 0,
+                                                       s.bottom, 1, 10))
+            self.spinRUp.set_adjustment(gtk.Adjustment(s.rightup, s.leftdown,
+                                                       i_height, 1, 10))
         # endif
-
         self.invalidateImage()
 
     # enddef
-
+        
     @print_timing
     def populateTextVBox(self):
         ''' Creates text entries from the boxes'''
 
         # first we need to remove old symbols
         # in case this is not first open file
-
         self.textVBox.foreach(lambda widget: \
                               self.textVBox.remove(widget))
 
@@ -741,7 +758,7 @@ class MainWindow:
         # endfor
     # enddef
 
-    @print_timing
+    #@print_timing
     def redrawArea(self, drawingArea, event):
         '''redraw area of selected symbol + add rectangle'''
 
@@ -749,14 +766,7 @@ class MainWindow:
         color = gtk.gdk.color_parse('red')
         drawingArea.modify_fg(gtk.STATE_NORMAL, color)  # color of rectangle
         if self.pixbuf:
-            drawingArea.window.draw_pixbuf(
-                gc,
-                self.pixbuf,
-                0,
-                0,
-                0,
-                0,
-                )
+            drawingArea.window.draw_pixbuf(gc, self.pixbuf, 0, 0, 0, 0)
 
         # endif
 
@@ -764,14 +774,8 @@ class MainWindow:
             s = self.boxes[self.selectedRow][self.selectedColumn]
             width = s.right - s.left
             height = s.bottom - s.top
-            drawingArea.window.draw_rectangle(
-                gc,
-                False,
-                s.left,
-                s.top,
-                width,
-                height,
-                )
+            drawingArea.window.draw_rectangle(gc,
+                False, s.left, s.top, width, height)
 
         # endif
     # enddef
@@ -783,8 +787,8 @@ class MainWindow:
         find box file format
         '''
         try:
-            f = open(imageName, 'r')
-            f.close()
+            fc = open(imageName, 'r')
+            fc.close()
         except IOError:
             self.errorDialog('Cannot find the %s file' % imageName,
                              self.window)
@@ -792,8 +796,8 @@ class MainWindow:
 
         boxname = imageName.rsplit('.', 1)[0] + '.box'
         try:
-            f = open(boxname, 'r')
-            f.close()
+            fb = open(boxname, 'r')
+            fb.close()
         except IOError:
             self.errorDialog('Cannot find the %s file' % boxname,
                              self.window)
@@ -831,19 +835,7 @@ class MainWindow:
         if VERBOSE > 0:
             print datetime.now(), 'Displaying symbols...'
         self.populateTextVBox()
-
-        # Set adjustments on all spin buttons
-        if VERBOSE > 0:
-            print datetime.now(), 'Adjusting all spin buttons...'
-        self.spinLeft.set_adjustment(gtk.Adjustment(0, 0,
-                self.pixbuf.get_width(), 1, 1))
-        self.spinRight.set_adjustment(gtk.Adjustment(0, 0,
-                self.pixbuf.get_width(), 1, 1))
-        self.spinTop.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
-        self.spinRUp.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
-        self.spinBottom.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
-        self.spinLDown.set_adjustment(gtk.Adjustment(0, 0, height, 1, 1))
-
+                
         self.setImageControlSensitivity(True)
         self.selectedRow = 0
         self.selectedColumn = 0
@@ -860,8 +852,8 @@ class MainWindow:
         row = 0
         col = 0
         try:
-            f = open(fileName, 'r')
-            for line in f:
+            ft = open(fileName, 'r')
+            for line in ft:
                 line = unicode(line)
                 for char in line:
                     if not char.isspace():
@@ -879,7 +871,7 @@ class MainWindow:
                 # endfor
             # endfor
 
-            f.close()
+            ft.close()
         except IOError:
             self.errorDialog('File ' + fileName + ' does not exist',
                              fileChooser)
@@ -989,7 +981,6 @@ class MainWindow:
                 else:
                     save_f.write('%s %d %d %d %d %d\n' % (text, s.left, height
                             - s.bottom, s.right, height - s.top, s.page))
-
 
             # endfor
         # endfor
@@ -1173,7 +1164,6 @@ class MainWindow:
         hbox.pack_start(clone.entry, False, False, 0)
 
         # To reorder the child, use col + 1 and add all the word breaks
-
         pos = self.selectedColumn + 1
         for s in row[0:self.selectedColumn + 1]:
             if s.spaceBefore:
@@ -1353,14 +1343,13 @@ class MainWindow:
     @print_timing
     def __init__(self):
         if VERBOSE > 0:
-            print 'Platform:', sys.platform, '\nTheme directory:', \
-                gtk.rc_get_theme_dir()
+            print 'Platform:', sys.platform
 
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        self.window.connect('destroy', lambda w: gtk.main_quit())
         self.window.set_title('pyTesseractTrainer - Tesseract Box '
                               + 'Editor version %s, revision:%s'
-                              % (VERSION, REVISION))
-        self.window.connect('destroy', lambda w: gtk.main_quit())
+                              % (VERSION, REVISION))        
         self.window.set_size_request(900, 600)
 
         vbox = gtk.VBox(False, 2)
@@ -1420,7 +1409,8 @@ class MainWindow:
         self.underlineButton = b
 
         self.spinBottom = gtk.SpinButton()
-        self.spinBottom.connect('changed', self.onSpinButtonChanged,
+        self.spinBottom.set_wrap(True)
+        self.spinBottom.connect("value_changed", self.onSpinButtonChanged,
                                 DIR_BOTTOM)
         self.buttonBox.pack_end(self.spinBottom, False, False, 0)
         self.spinBottom.show()
@@ -1429,7 +1419,7 @@ class MainWindow:
         l.show()
 
         self.spinTop = gtk.SpinButton()
-        self.spinTop.connect('changed', self.onSpinButtonChanged,
+        self.spinTop.connect('value_changed', self.onSpinButtonChanged,
                              DIR_TOP)
         self.buttonBox.pack_end(self.spinTop, False, False, 0)
         self.spinTop.show()
@@ -1438,15 +1428,16 @@ class MainWindow:
         l.show()
 
         self.spinRUp = gtk.SpinButton()
-        self.spinRUp.connect("changed", self.onSpinButtonChanged, DIR_RUP)
+        self.spinRUp.connect("value_changed", self.onSpinButtonChanged,
+                             DIR_RUP)
         self.buttonBox.pack_end(self.spinRUp, False, False, 0)
         self.spinRUp.show()
-        l = gtk.Label("  r-up:")
-        self.buttonBox.pack_end(l, False, False, 0)
-        l.show()
+        lru = gtk.Label(' r-up:')
+        self.buttonBox.pack_end(lru, False, False, 0)
+        lru.show()
 
         self.spinRight = gtk.SpinButton()
-        self.spinRight.connect('changed', self.onSpinButtonChanged,
+        self.spinRight.connect('value_changed', self.onSpinButtonChanged,
                                DIR_RIGHT)
         self.buttonBox.pack_end(self.spinRight, False, False, 0)
         self.spinRight.show()
@@ -1455,15 +1446,16 @@ class MainWindow:
         l.show()
 
         self.spinLDown = gtk.SpinButton()
-        self.spinLDown.connect("changed", self.onSpinButtonChanged, DIR_LDOWN)
+        self.spinLDown.connect('value_changed', self.onSpinButtonChanged,
+                               DIR_LDOWN)
         self.buttonBox.pack_end(self.spinLDown, False, False, 0)
         self.spinLDown.show()
-        l = gtk.Label("  l-down:")
-        self.buttonBox.pack_end(l, False, False, 0)
-        l.show()
+        lld = gtk.Label(' l-down:')
+        self.buttonBox.pack_end(lld, False, False, 0)
+        lld.show()
 
         self.spinLeft = gtk.SpinButton()
-        self.spinLeft.connect('changed', self.onSpinButtonChanged,
+        self.spinLeft.connect('value_changed', self.onSpinButtonChanged,
                               DIR_LEFT)
         self.buttonBox.pack_end(self.spinLeft, False, False, 0)
         self.spinLeft.show()
@@ -1473,7 +1465,7 @@ class MainWindow:
 
         self.setImageControlSensitivity(False)
         self.setSymbolControlSensitivity(False)
-        self.window.show()
+        self.window.show_all() #.show()
 
         if len(sys.argv) >= 2 and sys.argv[1] != "":
             argfilename = sys.argv[1]
@@ -1481,7 +1473,6 @@ class MainWindow:
         else:
             argfilename = None
         self.isPaused = False
-
 
     # enddef
 # endClass
