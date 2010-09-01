@@ -52,7 +52,7 @@ from datetime import datetime
 # parameters
 
 VERSION = '1.02'
-REVISION = '34'
+REVISION = '35'
 VERBOSE = 1  # if 1, than print additional information to standrard output
 SAVE_FORMAT = 3  # tesseract v3 box format
 DEBUG_SPEED = 0
@@ -224,24 +224,41 @@ def safe_backup(path, keep_original=True):
 
 def find_format(boxName):
     ''''find format of box file'''
-    f = open(boxName,'r')
-    format_set = set()
+    expected_format = 0  # expected number of items
+    wrong_row = ""  # here will be list of wrong rows
+    wrong_fl = False  # even first line is wrong 
+                      # so we can not use it for expected format
+    row = 1
+
+    f = open(boxName,'r') 
     for line in f:
-        format_set.add(len(line.split()))
+        nmbr_items = len(line.split())
+        if row == 1 and (nmbr_items == 5 or nmbr_items == 6):
+            expected_format = nmbr_items
+        elif row == 1 and (nmbr_items != 5 or nmbr_items != 6):
+            wrong_fl = True
+        if nmbr_items != expected_format:
+            wrong_row = wrong_row + str(row) + ", "
+        row += 1
     f.close
 
-    if len(format_set) == 1: # file is ok - it has only one format
-        if 5 in format_set:
-            return 2  # tesseract 2 box format
-        if 6 in format_set:
-            return 3  # tesseract 3 box format
+    if wrong_row == "":  # file is ok - it has only one format
+        if expected_format == 5:
+            if VERBOSE > 0:
+                print datetime.now(), 'Find tesseract 2 box file.'
+            return 2
+        if expected_format == 6:
+            if VERBOSE > 0:
+                print datetime.now(), 'Find tesseract 3 box file.'
+            return 3
     else:  # there lines with different formats!!!
-        #message = "Unknown format of line %s:\n'%s'\nin box file '%s'!" \
-        #         % (str(line_nmbr), line.strip(), boxName)
-        message = "Wrong format of box file"
-        if VERBOSE > 0:
-			message =  message + " (%s)" % format_set
-        message =  message + "."
+        message = "Wrong format of '%s'." % boxName
+        if wrong_fl:
+            message =  message + " Even first line is not correct!"
+        else:
+            message =  message + " Please check these rows: '%s'." \
+                % wrong_row[:-2]
+        
         dialog = gtk.MessageDialog(parent=None,
                 buttons=gtk.BUTTONS_CLOSE,
                 flags=gtk.DIALOG_DESTROY_WITH_PARENT,
@@ -259,7 +276,7 @@ def loadBoxData(boxName, height):
     open_format = find_format(boxName)
     
     if open_format == -1:
-		return -1 # wrong format of box file
+        return -1 # wrong format of box file
 
     f = codecs.open(boxName, 'r', 'utf-8')
     if VERBOSE > 0:
@@ -796,11 +813,11 @@ class MainWindow:
         height = self.pixbuf.get_height()
         self.boxes = loadBoxData(boxName, height)
         if self.boxes == -1:  # wrong format of box file
-			self.pixbuf = ""  # clear area
-			self.selectedRow = None
-			self.textVBox.foreach(lambda widget: \
+            self.pixbuf = ""  # clear area
+            self.selectedRow = None
+            self.textVBox.foreach(lambda widget: \
                               self.textVBox.remove(widget))
-			return False
+            return False
         self.loadedBoxFile = boxName
         self.window.set_title('pyTesseractTrainer: %s' % boxName)
 
