@@ -40,7 +40,7 @@ pyTesseractTrainer is successor of tesseractTrainer.py
 """
 import pygtk
 pygtk.require('2.0')
-import gtk, numpy
+import gtk
 import pango
 import sys
 import os
@@ -92,8 +92,8 @@ DIR_LEFT = 0
 DIR_RIGHT = 1
 DIR_TOP = 2
 DIR_BOTTOM = 3
-DIR_RUp = 4
-DIR_LDown = 5
+DIR_RUP = 4
+DIR_LDOWN = 5
 
 
 def print_timing(func):
@@ -222,7 +222,7 @@ def safe_backup(path, keep_original=True):
             break
     return new_path
 
-def find_format(boxName):
+def find_format(boxname):
     ''''find format of box file'''
     expected_format = 0  # expected number of items
     wrong_row = ""  # here will be list of wrong rows
@@ -230,8 +230,8 @@ def find_format(boxName):
                       # so we can not use it for expected format
     row = 1
 
-    f = open(boxName,'r') 
-    for line in f:
+    fbn = open(boxname,'r') 
+    for line in fbn:
         nmbr_items = len(line.split())
         if row == 1 and (nmbr_items == 5 or nmbr_items == 6):
             expected_format = nmbr_items
@@ -240,7 +240,7 @@ def find_format(boxName):
         if nmbr_items != expected_format:
             wrong_row = wrong_row + str(row) + ", "
         row += 1
-    f.close
+    fbn.close()
 
     if wrong_row == "":  # file is ok - it has only one format
         if expected_format == 5:
@@ -252,7 +252,7 @@ def find_format(boxName):
                 print datetime.now(), 'Find tesseract 3 box file.'
             return 3
     else:  # there lines with different formats!!!
-        message = "Wrong format of '%s'." % boxName
+        message = "Wrong format of '%s'." % boxname
         if wrong_fl:
             message =  message + " Even first line is not correct!"
         else:
@@ -269,22 +269,21 @@ def find_format(boxName):
         return -1 # wrong format of box file
 
 @print_timing
-def loadBoxData(boxName, height):
+def loadBoxData(boxname, height):
     '''Returns a list of lines. Each line contains a list of symbols
     FIELD_* constants.'''
 
-    open_format = find_format(boxName)
+    open_format = find_format(boxname)
     
     if open_format == -1:
         return -1 # wrong format of box file
 
-    f = codecs.open(boxName, 'r', 'utf-8')
+    f = codecs.open(boxname, 'r', 'utf-8')
     if VERBOSE > 0:
-        print datetime.now(), 'File %s is opened.' % boxName
+        print datetime.now(), 'File %s is opened.' % boxname
     result = []
     symbolLine = []
     prevRight = -1
-    line_nmbr = 1
     page = 0
 
     for line in f:
@@ -300,7 +299,6 @@ def loadBoxData(boxName, height):
         elif open_format == 2:
             (text, left, bottom, right, top) = line.split()
 
-        line_nmbr += 1
         s = Symbol()
 
         # if there is more than 1 symbols in text, check for:
@@ -454,7 +452,8 @@ class MainWindow:
         col,
         ):
         if VERBOSE > 1:
-            print datetime.now(), u"symbol: '', row: '%s', col: '%s', page: '%s'" \
+            print datetime.now(), \
+            u"symbol: '', row: '%s', col: '%s', page: '%s'" \
                 % (row, col, symbol.page)
         symbol.entry = gtk.Entry(10)
         symbol.entry.set_text(symbol.text)
@@ -684,7 +683,8 @@ class MainWindow:
 
         value = int(button.get_value())
         s = self.boxes[self.selectedRow][self.selectedColumn]
-        prevValue = (s.left, s.right, s.top, s.bottom, s.rightup, s.leftdown)[dir]
+        prevValue = (s.left, s.right, s.top, s.bottom, s.rightup, \
+                     s.leftdown)[dir]
 
         if dir == DIR_LEFT:
             s.left = value
@@ -694,9 +694,9 @@ class MainWindow:
             s.top = value
         elif dir == DIR_BOTTOM:
             s.bottom = value
-        elif dir == DIR_RUp:
+        elif dir == DIR_RUP:
             s.rightup = value
-        elif dir == DIR_LDown:
+        elif dir == DIR_LDOWN:
             s.leftdown = value
 
         # endif
@@ -790,12 +790,12 @@ class MainWindow:
                              self.window)
             return False
 
-        boxName = imageName.rsplit('.', 1)[0] + '.box'
+        boxname = imageName.rsplit('.', 1)[0] + '.box'
         try:
-            f = open(boxName, 'r')
+            f = open(boxname, 'r')
             f.close()
         except IOError:
-            self.errorDialog('Cannot find the %s file' % boxName,
+            self.errorDialog('Cannot find the %s file' % boxname,
                              self.window)
             return False
         return True
@@ -803,7 +803,7 @@ class MainWindow:
     @print_timing
     def loadImageAndBoxes(self, imageName, fileChooser):
         (name, extension) = imageName.rsplit('.', 1)
-        boxName = name + '.box'
+        boxname = name + '.box'
 
         file_ok = self.filecheck(imageName)
         if file_ok == False:
@@ -811,15 +811,15 @@ class MainWindow:
 
         self.pixbuf = gtk.gdk.pixbuf_new_from_file(imageName)
         height = self.pixbuf.get_height()
-        self.boxes = loadBoxData(boxName, height)
+        self.boxes = loadBoxData(boxname, height)
         if self.boxes == -1:  # wrong format of box file
             self.pixbuf = ""  # clear area
             self.selectedRow = None
             self.textVBox.foreach(lambda widget: \
                               self.textVBox.remove(widget))
             return False
-        self.loadedBoxFile = boxName
-        self.window.set_title('pyTesseractTrainer: %s' % boxName)
+        self.loadedBoxFile = boxname
+        self.window.set_title('pyTesseractTrainer: %s' % boxname)
 
         if VERBOSE > 0:
             print datetime.now(), 'File %s is opened.' % imageName
@@ -964,7 +964,7 @@ class MainWindow:
         else:
             print '%s does not exist, nothing to backup' % path
 
-        f= open(self.loadedBoxFile, 'w')
+        save_f = open(self.loadedBoxFile, 'w')
         for row in self.boxes:
             for s in row:
                 text = s.text
@@ -984,19 +984,17 @@ class MainWindow:
                 # endif
 
                 if  SAVE_FORMAT == 2:
-                    f.write('%s %d %d %d %d\n' % (text, s.left, height
+                    save_f.write('%s %d %d %d %d\n' % (text, s.left, height
                             - s.bottom, s.right, height - s.top))
                 else:
-                    f.write('%s %d %d %d %d %d\n' % (text, s.left, height
+                    save_f.write('%s %d %d %d %d %d\n' % (text, s.left, height
                             - s.bottom, s.right, height - s.top, s.page))
 
 
             # endfor
         # endfor
 
-        f.close()
-        # TODO: rename
-
+        save_f.close()
     # enddef
 
     @print_timing
@@ -1083,7 +1081,8 @@ class MainWindow:
     @print_timing
     def doEditCopy(self, action):
         this = self.boxes[self.selectedRow][self.selectedColumn]
-        coords = '%s %s %s %s' % (this.left, this.leftdown, this.right, this.rightup)
+        coords = '%s %s %s %s' % (this.left, this.leftdown, this.right, \
+                                  this.rightup)
         clipboard = gtk.clipboard_get("CLIPBOARD")
         clipboard.set_text(coords, len=-1)
     #enddef
@@ -1439,10 +1438,10 @@ class MainWindow:
         l.show()
 
         self.spinRUp = gtk.SpinButton()
-        self.spinRUp.connect("changed", self.onSpinButtonChanged, DIR_RUp)
+        self.spinRUp.connect("changed", self.onSpinButtonChanged, DIR_RUP)
         self.buttonBox.pack_end(self.spinRUp, False, False, 0)
         self.spinRUp.show()
-        l = gtk.Label("  r-up:");
+        l = gtk.Label("  r-up:")
         self.buttonBox.pack_end(l, False, False, 0)
         l.show()
 
@@ -1456,10 +1455,10 @@ class MainWindow:
         l.show()
 
         self.spinLDown = gtk.SpinButton()
-        self.spinLDown.connect("changed", self.onSpinButtonChanged, DIR_LDown)
+        self.spinLDown.connect("changed", self.onSpinButtonChanged, DIR_LDOWN)
         self.buttonBox.pack_end(self.spinLDown, False, False, 0)
         self.spinLDown.show()
-        l = gtk.Label("  l-down:");
+        l = gtk.Label("  l-down:")
         self.buttonBox.pack_end(l, False, False, 0)
         l.show()
 
@@ -1476,15 +1475,12 @@ class MainWindow:
         self.setSymbolControlSensitivity(False)
         self.window.show()
 
-        if len(sys.argv)>=2 and sys.argv[1] != "":
-            argfileName=sys.argv[1]
-            argcurrentdir = os.path.dirname(sys.argv[1])
-            self.loadImageAndBoxes(argfileName, self.window)
-            argbaseFileName = os.path.basename(argfileName)
+        if len(sys.argv) >= 2 and sys.argv[1] != "":
+            argfilename = sys.argv[1]
+            self.loadImageAndBoxes(argfilename, self.window)
         else:
-            argfileName=None
-            argcurrentdir = os.path.dirname(sys.argv[0])
-        self.isPaused = False;
+            argfilename = None
+        self.isPaused = False
 
 
     # enddef
