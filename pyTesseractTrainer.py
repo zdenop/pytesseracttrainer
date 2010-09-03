@@ -50,13 +50,13 @@ from time import clock
 from datetime import datetime
 
 # parameters
-
 VERSION = '1.02'
-REVISION = '36'
-VERBOSE = 1  # if 1, than print additional information to standrard output
+REVISION = '38'
 SAVE_FORMAT = 3  # tesseract v3 box format
+#BASE_FONT = 'monospace'
+BASE_FONT = 'Serif'
 DEBUG_SPEED = 0
-BASE_FONT = 'monospace'
+VERBOSE = 1  # if 1, than print additional information to standrard output
 
 MENU = \
     '''<ui>
@@ -533,21 +533,31 @@ class MainWindow:
     def onEntryFocus(self, entry, ignored, row, column):
         self.selectedRow = row
         self.selectedColumn = column
+#        entry.modify_text(gtk.STATE_NORMAL, gtk.gdk.color_parse('#0000ff'))
 
         # Force the image to refresh
-
         self.invalidateImage()
 
-        # Bring the rectangle into view if necessary
+        # Scroll text view if necessary
+        alloc = entry.get_allocation()
+        adj_v = self.textScroll.get_vadjustment()
+        if alloc.y < adj_v.value or alloc.y > adj_v.value + adj_v.page_size:
+            adj_v.set_value(min(alloc.y, adj_v.upper-adj_v.page_size))
+        adj_h = self.textScroll.get_hadjustment()
+        if alloc.x < adj_h.value or alloc.x > adj_h.value + adj_h.page_size:
+            adj_h.set_value(min(alloc.x, adj_h.upper-adj_h.page_size))
 
+        # Bring the rectangle into view if necessary
         s = self.boxes[row][column]
         width = s.right - s.left
         height = s.bottom - s.top
         ensureVisible(self.scrolledWindow.get_hadjustment(), s.left,
                       width)
+        print "548", self.scrolledWindow.get_hadjustment().value,s.left, width
         ensureVisible(self.scrolledWindow.get_vadjustment(), s.top,
                       height)
-
+        print "551", self.scrolledWindow.get_hadjustment().value, s.top, height
+        
         # Activate the formatting checkboxes and set their values
 
         self.setSymbolControlSensitivity(True)
@@ -597,10 +607,9 @@ class MainWindow:
 
     # enddef
 
-    # Intercept ctrl-arrow and ctrl-shift-arrow
-
     @print_timing
     def onEntryKeyPress(self, entry, event, row, col):
+        '''Intercept ctrl-arrow and ctrl-shift-arrow'''
         if not event.state & gtk.gdk.CONTROL_MASK:
             return False
 
@@ -823,7 +832,8 @@ class MainWindow:
                               self.textVBox.remove(widget))
             return False
         self.loadedBoxFile = boxname
-        self.window.set_title('pyTesseractTrainer: %s' % boxname)
+        self.window.set_title('pyTesseractTrainer - %s: %s' % \
+                (VERSION, boxname))
 
         if VERBOSE > 0:
             print datetime.now(), 'File %s is opened.' % imageName
@@ -951,10 +961,11 @@ class MainWindow:
 
         path = self.loadedBoxFile
         bak_path = safe_backup(path)
-        if bak_path:
-            print '%s safely backed up as %s' % (path, bak_path)
-        else:
-            print '%s does not exist, nothing to backup' % path
+        if VERBOSE > 0:
+            if bak_path:
+                print '%s safely backed up as %s' % (path, bak_path)
+            else:
+                print '%s does not exist, nothing to backup' % path
 
         save_f = open(self.loadedBoxFile, 'w')
         for row in self.boxes:
@@ -1350,7 +1361,7 @@ class MainWindow:
         self.window.set_title('pyTesseractTrainer - Tesseract Box '
                               + 'Editor version %s, revision:%s'
                               % (VERSION, REVISION))        
-        self.window.set_size_request(900, 600)
+        self.window.set_size_request(800, 600)
 
         vbox = gtk.VBox(False, 2)
         self.window.add(vbox)
@@ -1375,9 +1386,10 @@ class MainWindow:
                                    gtk.POLICY_AUTOMATIC)
         vbox.pack_start(self.textScroll, True, True, 2)
         self.textScroll.show()
-
+#http://osdir.com/ml/gnome.gtk+.python/2003-02/msg00099.html
         self.textVBox = gtk.VBox()
         self.textScroll.add_with_viewport(self.textVBox)
+        #self.textScroll.add(self.textVBox) #  use gtk_scrolled_window_add_with_viewport() instead
         self.textVBox.show()
 
         self.buttonBox = gtk.HBox(False, 0)
