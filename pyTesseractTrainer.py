@@ -538,7 +538,7 @@ class MainWindow:
         # Force the image to refresh
         self.invalidateImage()
 
-        # Scroll text view if necessary
+        # Scroll textView if necessary
         alloc = entry.get_allocation()
         adj_v = self.textScroll.get_vadjustment()
         if alloc.y < adj_v.value or alloc.y > adj_v.value + adj_v.page_size:
@@ -779,7 +779,7 @@ class MainWindow:
 
         # endif
 
-        if self.selectedRow != None:
+        if (self.selectedRow != None and self.selectedColumn != None):
             s = self.boxes[self.selectedRow][self.selectedColumn]
             width = s.right - s.left
             height = s.bottom - s.top
