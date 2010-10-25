@@ -51,10 +51,14 @@ from datetime import datetime
 
 # parameters
 VERSION = '1.02'
-REVISION = '38'
+REVISION = '42'
 SAVE_FORMAT = 3  # tesseract v3 box format
 #BASE_FONT = 'monospace'
-BASE_FONT = 'Serif'
+BASE_FONT = 'Consolas 12'
+NUMBER_COLOR = "green"
+PUNC_COLOR = "blue"
+LATER_COLOR = '#FF0000'
+STD_COLOR = '#000000'
 DEBUG_SPEED = 0
 VERBOSE = 1  # if 1, than print additional information to standrard output
 
@@ -87,6 +91,7 @@ MENU = \
 ATTR_BOLD = 0
 ATTR_ITALIC = 1
 ATTR_UNDERLINE = 2
+ATTR_LATER = 3
 
 DIR_LEFT = 0
 DIR_RIGHT = 1
@@ -125,6 +130,7 @@ class Symbol:
     bold = False
     italic = False
     underline = False
+    later = False
     spaceBefore = False
     entry = None
     handlers = []
@@ -132,6 +138,8 @@ class Symbol:
     @print_timing
     def setEntryFont(self):
         font = BASE_FONT
+        self.entry.modify_text(gtk.STATE_NORMAL, gtk.gdk.color_parse(STD_COLOR))
+
         if self.bold:
             font += ' bold'
 
@@ -152,6 +160,11 @@ class Symbol:
             self.entry.set_text(self.text)
 
         # endif
+
+        if self.later:
+            self.entry.modify_text(gtk.STATE_NORMAL, gtk.gdk.color_parse(LATER_COLOR))
+
+        # endif
     # enddef
 
     @print_timing
@@ -168,6 +181,7 @@ class Symbol:
         s.bold = self.bold
         s.italic = self.italic
         s.underline = self.underline
+        s.later = self.later
         s.spaceBefore = self.spaceBefore
         s.entry = self.entry
         s.handlers = self.handlers
@@ -317,6 +331,13 @@ def loadBoxData(boxname, height):
                 text = text.replace("'", '', 1)
 
             # endif
+
+            if '⁂' in text[:1]:
+                s.later = True
+                text = text.replace('⁂', '', 1)
+
+            # endif
+
         # endif
 
         s.text = text
@@ -487,6 +508,8 @@ class MainWindow:
             symbol.italic = value
         elif attr == ATTR_UNDERLINE:
             symbol.underline = value
+        elif attr == ATTR_LATER:
+            symbol.later = value
 
         # endif
 
@@ -506,6 +529,8 @@ class MainWindow:
                 row[i].bold = value
             elif attr == ATTR_ITALIC:
                 row[i].italic = value
+            elif attr == ATTR_LATER:
+                row[i].later = value
 
             # endif
 
@@ -520,6 +545,8 @@ class MainWindow:
                 row[i].bold = value
             elif attr == ATTR_ITALIC:
                 row[i].italic = value
+            elif attr == ATTR_LATER:
+                row[i].later = value
 
             # endif
 
@@ -565,6 +592,7 @@ class MainWindow:
         self.boldButton.set_active(s.bold)
         self.italicButton.set_active(s.italic)
         self.underlineButton.set_active(s.underline)
+        self.laterButton.set_active(s.later)
 
         # Set adjustments/limits on all spin buttons
         i_height = self.pixbuf.get_height()
@@ -986,6 +1014,11 @@ class MainWindow:
 
                 # endif
 
+                if s.later:
+                    text = '⁂' + text
+
+                # endif
+
                 if  SAVE_FORMAT == 2:
                     save_f.write('%s %d %d %d %d\n' % (text, s.left, height
                             - s.bottom, s.right, height - s.top))
@@ -1064,6 +1097,7 @@ class MainWindow:
             'Ctrl-B: mark entire word as bold\n'
             'Ctrl-I: mark entire word as italic\n'
             'Ctrl-U: mark current symbol as underline\n'
+            'Ctrl-I: mark entire word for later check\n'
             'Ctrl-arrow: grow box up, down, left or right\n'
             'Ctrl-Shift-arrow: shrink box up, down, left or right\n'
             'Ctrl-1: merge current symbol&box with next symbol\n'
@@ -1361,7 +1395,7 @@ class MainWindow:
         self.window.set_title('pyTesseractTrainer - Tesseract Box '
                               + 'Editor version %s, revision:%s'
                               % (VERSION, REVISION))        
-        self.window.set_size_request(800, 600)
+        self.window.set_size_request(840, 600)
 
         vbox = gtk.VBox(False, 2)
         self.window.add(vbox)
@@ -1397,7 +1431,7 @@ class MainWindow:
         self.buttonBox.show()
 
         b = gtk.CheckButton('_Bold', True)
-        self.buttonBox.pack_start(b, False, False, 10)
+        self.buttonBox.pack_start(b, False, False, 5)
         b.connect('toggled', self.onCheckButtonToggled, ATTR_BOLD)
         b.add_accelerator('activate', self.accelGroup, ord('B'),
                           gtk.gdk.CONTROL_MASK, gtk.ACCEL_VISIBLE)
@@ -1405,7 +1439,7 @@ class MainWindow:
         self.boldButton = b
 
         b = gtk.CheckButton('_Italic', True)
-        self.buttonBox.pack_start(b, False, False, 10)
+        self.buttonBox.pack_start(b, False, False, 5)
         b.connect('toggled', self.onCheckButtonToggled, ATTR_ITALIC)
         b.add_accelerator('activate', self.accelGroup, ord('I'),
                           gtk.gdk.CONTROL_MASK, gtk.ACCEL_VISIBLE)
@@ -1413,12 +1447,22 @@ class MainWindow:
         self.italicButton = b
 
         b = gtk.CheckButton('_Underline', True)
-        self.buttonBox.pack_start(b, False, False, 10)
+        self.buttonBox.pack_start(b, False, False, 5)
         b.connect('toggled', self.onCheckButtonToggled, ATTR_UNDERLINE)
         b.add_accelerator('activate', self.accelGroup, ord('U'),
                           gtk.gdk.CONTROL_MASK, gtk.ACCEL_VISIBLE)
         b.show()
         self.underlineButton = b
+
+        b = gtk.CheckButton('_Later', True)
+        #b.modify_fg(gtk.STATE_NORMAL, gtk.gdk.color_parse('#FF00FF'))
+        b.modify_text(gtk.STATE_NORMAL, gtk.gdk.color_parse(LATER_COLOR))
+        self.buttonBox.pack_start(b, False, False, 5)
+        b.connect('toggled', self.onCheckButtonToggled, ATTR_LATER)
+        b.add_accelerator('activate', self.accelGroup, ord('L'),
+                          gtk.gdk.CONTROL_MASK, gtk.ACCEL_VISIBLE)
+        b.show()
+        self.laterButton = b
 
         self.spinBottom = gtk.SpinButton()
         self.spinBottom.set_wrap(True)
