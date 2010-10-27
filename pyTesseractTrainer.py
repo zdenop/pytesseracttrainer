@@ -1231,6 +1231,7 @@ class MainWindow:
         self.spinBottom.set_value(this.bottom)
         self.spinLDown.set_value(this.leftdown)
         self.buttonUpdateInProgress = None
+        self.boxes[self.selectedRow][self.selectedColumn].entry.grab_focus()
 
     # enddef
 
@@ -1271,6 +1272,9 @@ class MainWindow:
         self.spinBottom.set_value(this.bottom)
         self.spinLDown.set_value(this.leftdown)
         self.buttonUpdateInProgress = None
+
+        # select content of joined boxes
+        self.boxes[self.selectedRow][self.selectedColumn].entry.grab_focus()
 
     # enddef
 
