@@ -80,6 +80,12 @@ MENU = \
       <menuitem action="JoinWithNext"/>
       <menuitem action="Delete"/>
     </menu>
+    <menu action="Tools">
+      <menuitem action="Draw boxes"/>
+      <menuitem action="Export text"/>
+      <separator/>
+      <menuitem action="Preferences"/>
+    </menu>
     <menu action="Help">
       <menuitem action="About"/>
       <menuitem action="AboutMergeText"/>
@@ -425,6 +431,12 @@ class MainWindow:
     selectedColumn = None
     buttonUpdateInProgress = None
     boxes = None
+
+    def show_prefs(self, action):  # TODO
+        prev_thumbnail_size = self.thumbnail_size
+        self.prefs_dialog = gtk.Dialog(_("Mirage Preferences"), self.window)
+        self.prefs_dialog.set_has_separator(False)
+        self.prefs_dialog.set_resizable(False)
 
     @print_timing
     def reconnectEntries(self, rowIndex):
@@ -1346,6 +1358,108 @@ class MainWindow:
 
     # enddef
 
+    def doDrawBoxes(self, action):
+        '''Draw boxes on the picture'''
+        # TODO
+        
+    def doExportText(self, action):
+        '''Export content of the boxes as text file'''
+        # TODO
+        height = self.pixbuf.get_height()
+
+        xmin_last = 0
+        ymin_last = 0
+        xmax_last = 0
+        ymax_last = 0
+
+        text_line = ""
+        linenumber = 0
+        rx_min = 0
+        rx_max = 0
+        ry_min = 0
+        ry_max = 0
+
+        last_rx_max = 0
+        line_text = []
+        line_start = []
+        line_end = []
+
+        for row in self.boxes:
+            for s in row:
+                    xmin = s.left
+                    ymin = height - s.bottom
+                    xmax = s.right
+                    ymax = height - s.top
+
+                    if rx_min == 0:
+                        rx_min = xmin
+                        ry_min = ymin
+                        rx_max = xmax
+                        ry_max = ymax
+
+                    rx_min = min(rx_min, xmin)
+                    ry_min = min(ry_min, ymin)
+                    rx_max = max(rx_max, xmax)
+                    ry_max = max(ry_max, ymax)
+
+                    if xmin >= xmax_last + 6 and xmax_last != -1:  # new word
+                        
+                        if len(text_line) <> 0:
+                            text_line += " " + s.text
+                        else:
+                            text_line += s.text
+                            rx_min = 0
+                    elif xmin < xmax_last - 10:
+                        line_text.append(text_line)
+                        text_line = s.text
+                        line_start.append(rx_min)
+                        line_end.append(rx_max)
+                       
+                        rx_min = 0
+                        rx_max = 0
+                        ry_min = 0
+                        ry_max = 0
+                        linenumber += 1
+                    else:
+                        text_line += s.text
+
+                    ymin_last = ymin
+                    ymax_last =  ymax
+                    xmin_last = xmin
+                    xmax_last =  xmax
+
+        if VERBOSE > 0:
+            for start, end, text in zip(line_start, line_end, line_text):
+                print '{0}\t{1}\t{2}'.format(start, end, text)
+
+        last_end = 0
+        page = ""
+
+        for start, end, text in zip(line_start, line_end, line_text):
+            page += text
+            if (end - last_end) < -3:
+                page += '\n'
+            else:
+                if page[-1] == '-':
+                    page = page[0:-1]
+                else:
+                    page += ' '
+            last_end = end
+
+        text_file = self.loadedBoxFile.rsplit('.', 1)[0] + '.txt'
+        bak_path = safe_backup(text_file)
+        if VERBOSE > 0:
+            if bak_path:
+                print '%s safely backed up as %s' % (text_file, bak_path)
+            else:
+                print '%s does not exist, nothing to backup' % text_file
+
+        export_file = open(text_file, 'w')
+        for a_line in page:
+            export_file.write(a_line)
+        export_file.close()
+    # enddef
+
     @print_timing
     def makeMenu(self):
         uiManager = gtk.UIManager()
@@ -1361,22 +1475,28 @@ class MainWindow:
               self.doFileSave),
              ('Quit', gtk.STOCK_QUIT, None, None, None,
               lambda w: gtk.main_quit()),
-             ('File', None, '_File'),
-             ('Edit', None, '_Edit'),
-             ('Copy', None, 'Copy _tesseract coords', '<Control>T', None,
+             ('File', gtk.STOCK_FILE, '_File'),
+             ('Edit', gtk.STOCK_EDIT, '_Edit'),
+             ('Copy', gtk.STOCK_COPY, 'Copy _tesseract coords', '<Control>T', None,
               self.doEditCopy),
-             ('djvMap', None, 'Copy _djvMap coords', '<Control>A', None,
+             ('djvMap', gtk.STOCK_COPY, 'Copy _djvMap coords', '<Control>A', None,
               self.doEditdjvMap),
-             ('htmMap', None, 'Copy _htmMap coords', '<Control>M', None,
+             ('htmMap', gtk.STOCK_COPY, 'Copy _htmMap coords', '<Control>M', None,
               self.doEdithtmMap),
-             ('Split', None, '_Split Symbol&Box', '<Control>2', None,
+             ('Split', gtk.STOCK_CUT, '_Split Symbol&Box', '<Control>2', None,
               self.doEditSplit),
-             ('JoinWithNext', None, '_Join with Next Symbol&Box',
+             ('JoinWithNext', gtk.STOCK_ADD, '_Join with Next Symbol&Box',
               '<Control>1', None, self.doEditJoin),
-             ('Delete', None, '_Delete Symbol&Box', '<Control>D',
+             ('Delete', gtk.STOCK_DELETE , '_Delete Symbol&Box', '<Control>D',
               None, self.doEditDelete),
-             ('Help', None, '_Help'),
-             ('About', None, '_About', None, None, self.doHelpAbout),
+             ('Tools', None, '_Tools'),
+             ('Draw boxes', None, 'Draw b_oxes', None, None, self.doDrawBoxes),
+             ('Export text', None, '_Export _text', None, None, 
+               self.doExportText),
+             ('Preferences', gtk.STOCK_PREFERENCES, ('_Preferences...'), 
+               '<Ctrl>P', ('Preferences'), self.show_prefs),
+             ('Help', gtk.STOCK_HELP, '_Help'),
+             ('About', gtk.STOCK_ABOUT, '_About', None, None, self.doHelpAbout),
              ('AboutMergeText', None, 'About Merge Text', None, None,
                 self.doHelpAboutMerge),
              ('Shortcuts', None, '_Keyboard shotcuts', None, None,
@@ -1424,10 +1544,11 @@ class MainWindow:
                                    gtk.POLICY_AUTOMATIC)
         vbox.pack_start(self.textScroll, True, True, 2)
         self.textScroll.show()
-#http://osdir.com/ml/gnome.gtk+.python/2003-02/msg00099.html
+        #http://osdir.com/ml/gnome.gtk+.python/2003-02/msg00099.html
         self.textVBox = gtk.VBox()
         self.textScroll.add_with_viewport(self.textVBox)
-        #self.textScroll.add(self.textVBox) #  use gtk_scrolled_window_add_with_viewport() instead
+        #self.textScroll.add(self.textVBox) 
+        #  use gtk_scrolled_window_add_with_viewport() instead
         self.textVBox.show()
 
         self.buttonBox = gtk.HBox(False, 0)
