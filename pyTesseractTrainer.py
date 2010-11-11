@@ -50,8 +50,8 @@ from time import clock
 from datetime import datetime
 
 # parameters
-VERSION = '1.02'
-REVISION = '42'
+VERSION = '1.03'
+REVISION = '46'
 SAVE_FORMAT = 3  # tesseract v3 box format
 #BASE_FONT = 'monospace'
 BASE_FONT = 'Consolas 12'
@@ -83,10 +83,11 @@ MENU = \
     <menu action="Tools">
       <menuitem action="Draw boxes"/>
       <menuitem action="Export text"/>
+      <menuitem action="Export text - lines"/>
       <separator/>
       <menuitem action="Preferences"/>
     </menu>
-    <menu action="Help">
+    <menu action="Help" name="HelpMenu">
       <menuitem action="About"/>
       <menuitem action="AboutMergeText"/>
       <menuitem action="Shortcuts"/>
@@ -431,10 +432,10 @@ class MainWindow:
     selectedColumn = None
     buttonUpdateInProgress = None
     boxes = None
+    area_show = False
 
     def show_prefs(self, action):  # TODO
-        prev_thumbnail_size = self.thumbnail_size
-        self.prefs_dialog = gtk.Dialog(_("Mirage Preferences"), self.window)
+        self.prefs_dialog = gtk.Dialog("Preferences", self.window)
         self.prefs_dialog.set_has_separator(False)
         self.prefs_dialog.set_resizable(False)
 
@@ -810,7 +811,7 @@ class MainWindow:
     #@print_timing
     def redrawArea(self, drawingArea, event):
         '''redraw area of selected symbol + add rectangle'''
-
+        
         gc = drawingArea.get_style().fg_gc[gtk.STATE_NORMAL]
         color = gtk.gdk.color_parse('red')
         drawingArea.modify_fg(gtk.STATE_NORMAL, color)  # color of rectangle
@@ -1357,14 +1358,30 @@ class MainWindow:
         self.actionGroup.get_action('Edit').set_sensitive(bool)
 
     # enddef
-
-    def doDrawBoxes(self, action):
+    
+    @print_timing
+    def doDrawBoxes(self, area):
         '''Draw boxes on the picture'''
-        # TODO
-        
+        #TODO: must be show in individual window/new drawingArea
+
+        self.gc = self.drawingArea.get_style().fg_gc[gtk.STATE_NORMAL]
+        color = gtk.gdk.color_parse('green')  # color of rectangle
+        self.drawingArea.modify_fg(gtk.STATE_NORMAL, color)
+
+        for row in self.boxes:
+            for s in row:
+                #print s.bottom, s.left
+                width = s.right - s.left
+                height = s.bottom - s.top
+                self.drawingArea.window.draw_rectangle(self.gc,
+                    False, s.left, s.top, width, height)
+    
+    @print_timing
     def doExportText(self, action):
-        '''Export content of the boxes as text file'''
-        # TODO
+        '''
+        Export content of the boxes as text file with paragraphs.
+        Paragraph are identified by intendation from left margin.
+        '''
         height = self.pixbuf.get_height()
 
         xmin_last = 0
@@ -1446,7 +1463,7 @@ class MainWindow:
                     page += ' '
             last_end = end
 
-        text_file = self.loadedBoxFile.rsplit('.', 1)[0] + '.txt'
+        text_file = self.loadedBoxFile.rsplit('.', 1)[0] + '_p.txt'
         bak_path = safe_backup(text_file)
         if VERBOSE > 0:
             if bak_path:
@@ -1461,11 +1478,108 @@ class MainWindow:
     # enddef
 
     @print_timing
+    def doExportTextLines(self, action):
+        '''Export content of the boxes as text.'''
+        # TODO: clean this code
+
+        height = self.pixbuf.get_height()
+        xmin_last = 0
+        ymin_last = 0
+        xmax_last = 0
+        ymax_last = 0
+
+        text_line = ""
+        linenumber = 0
+        rx_min = 0
+        rx_max = 0
+        ry_min = 0
+        ry_max = 0
+
+        last_rx_max = 0
+        line_text = []
+        line_start = []
+        line_end = []
+
+        for row in self.boxes:
+            for s in row:
+                    xmin = s.left
+                    ymin = height - s.bottom
+                    xmax = s.right
+                    ymax = height - s.top
+
+                    if rx_min == 0:
+                        rx_min = xmin
+                        ry_min = ymin
+                        rx_max = xmax
+                        ry_max = ymax
+
+                    rx_min = min(rx_min, xmin)
+                    ry_min = min(ry_min, ymin)
+                    rx_max = max(rx_max, xmax)
+                    ry_max = max(ry_max, ymax)
+
+                    if xmin >= xmax_last + 6 and xmax_last != -1:  # new word
+                        
+                        if len(text_line) <> 0:
+                            text_line += " " + s.text
+                        else:
+                            text_line += s.text
+                            rx_min = 0
+                    elif xmin < xmax_last - 10:
+                        line_text.append(text_line)
+                        text_line = s.text
+                        line_start.append(rx_min)
+                        line_end.append(rx_max)
+                       
+                        rx_min = 0
+                        rx_max = 0
+                        ry_min = 0
+                        ry_max = 0
+                        linenumber += 1
+                    else:
+                        text_line += s.text
+
+                    ymin_last = ymin
+                    ymax_last =  ymax
+                    xmin_last = xmin
+                    xmax_last =  xmax
+
+        text_file = self.loadedBoxFile.rsplit('.', 1)[0] + '.text'
+        bak_path = safe_backup(text_file)
+        if VERBOSE > 0:
+            if bak_path:
+                print '%s safely backed up as %s' % (text_file, bak_path)
+            else:
+                print '%s does not exist, nothing to backup' % text_file
+
+        export_file = open(text_file, 'w')
+        for start, end, text in zip(line_start, line_end, line_text):
+            if VERBOSE > 0:
+                print '{0}\t{1}\t{2}'.format(start, end, text)
+            export_file.write(text + "\n")
+        export_file.close()
+    # enddef
+
+    @print_timing
+    def toggle_area(self, action):
+        print "status of area:",  self.drawingArea.get_property('visible')
+        if self.area_show == True:
+            self.area_show = False
+            print "Action: area is hidden"
+        else:
+            self.doDrawBoxes(self.drawingArea)
+            self.area_show = True
+            print "Action: area is visible"
+
+    @print_timing
     def makeMenu(self):
         uiManager = gtk.UIManager()
         self.accelGroup = uiManager.get_accel_group()
         self.window.add_accel_group(self.accelGroup)
         self.actionGroup = gtk.ActionGroup('UIManagerExample')
+        self.actionGroup.add_toggle_actions([
+              ('Draw boxes', None, 'Draw b_oxes', None, 'Draw b_oxes', self.toggle_area, self.area_show)
+            ])
         self.actionGroup.add_actions(
             [('Open', gtk.STOCK_OPEN, '_Open Image...', None, None,
               self.doFileOpen),
@@ -1489,11 +1603,13 @@ class MainWindow:
               '<Control>1', None, self.doEditJoin),
              ('Delete', gtk.STOCK_DELETE , '_Delete Symbol&Box', '<Control>D',
               None, self.doEditDelete),
-             ('Tools', None, '_Tools'),
-             ('Draw boxes', None, 'Draw b_oxes', None, None, self.doDrawBoxes),
-             ('Export text', None, '_Export _text', None, None, 
+             ('Tools', gtk.STOCK_PREFERENCES, '_Tools'),
+             #('Draw boxes', None, 'Draw b_oxes', None, None, self.doDrawBoxes),
+             ('Export text', None, 'Export _text', None, None, 
                self.doExportText),
-             ('Preferences', gtk.STOCK_PREFERENCES, ('_Preferences...'), 
+             ('Export text - lines', None, 'Export text - _lines', '<Control>L', None, 
+               self.doExportTextLines),
+             ('Preferences', gtk.STOCK_PROPERTIES, ('_Preferences...'), 
                '<Ctrl>P', ('Preferences'), self.show_prefs),
              ('Help', gtk.STOCK_HELP, '_Help'),
              ('About', gtk.STOCK_ABOUT, '_About', None, None, self.doHelpAbout),
@@ -1504,6 +1620,7 @@ class MainWindow:
              ])
         uiManager.insert_action_group(self.actionGroup, 0)
         uiManager.add_ui_from_string(MENU)
+        uiManager.get_widget('/MenuBar/HelpMenu').set_right_justified(True)
         return uiManager.get_widget('/MenuBar')
     #enddef
 
@@ -1538,7 +1655,7 @@ class MainWindow:
         self.drawingArea.connect('expose-event', self.redrawArea)
         self.scrolledWindow.add_with_viewport(self.drawingArea)
         self.drawingArea.show()
-
+        
         self.textScroll = gtk.ScrolledWindow()
         self.textScroll.set_policy(gtk.POLICY_AUTOMATIC,
                                    gtk.POLICY_AUTOMATIC)
@@ -1580,7 +1697,6 @@ class MainWindow:
         self.underlineButton = b
 
         b = gtk.CheckButton('_Later', True)
-        #b.modify_fg(gtk.STATE_NORMAL, gtk.gdk.color_parse('#FF00FF'))
         b.modify_text(gtk.STATE_NORMAL, gtk.gdk.color_parse(LATER_COLOR))
         self.buttonBox.pack_start(b, False, False, 5)
         b.connect('toggled', self.onCheckButtonToggled, ATTR_LATER)
