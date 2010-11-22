@@ -81,7 +81,6 @@ MENU = \
       <menuitem action="Delete"/>
     </menu>
     <menu action="Tools">
-      <menuitem action="Draw boxes"/>
       <menuitem action="Export text"/>
       <menuitem action="Export text - lines"/>
       <separator/>
@@ -281,7 +280,7 @@ def find_format(boxname):
         else:
             message =  message + " Please check these rows: '%s'." \
                 % wrong_row[:-2]
-        
+
         dialog = gtk.MessageDialog(parent=None,
                 buttons=gtk.BUTTONS_CLOSE,
                 flags=gtk.DIALOG_DESTROY_WITH_PARENT,
@@ -297,7 +296,7 @@ def loadBoxData(boxname, height):
     FIELD_* constants.'''
 
     open_format = find_format(boxname)
-    
+
     if open_format == -1:
         return -1 # wrong format of box file
 
@@ -597,7 +596,7 @@ class MainWindow:
         ensureVisible(self.scrolledWindow.get_vadjustment(), s.top,
                       height)
         print "551", self.scrolledWindow.get_hadjustment().value, s.top, height
-        
+
         # Activate the formatting checkboxes and set their values
 
         self.setSymbolControlSensitivity(True)
@@ -727,7 +726,7 @@ class MainWindow:
                      s.leftdown)[dir]
         i_height = self.pixbuf.get_height()
         i_width = self.pixbuf.get_width()
-        
+
         if dir == DIR_LEFT:
             s.left = value
             self.spinRight.set_adjustment(gtk.Adjustment(s.right, s.left,
@@ -772,7 +771,7 @@ class MainWindow:
         self.invalidateImage()
 
     # enddef
-        
+
     @print_timing
     def populateTextVBox(self):
         ''' Creates text entries from the boxes'''
@@ -811,7 +810,7 @@ class MainWindow:
     #@print_timing
     def redrawArea(self, drawingArea, event):
         '''redraw area of selected symbol + add rectangle'''
-        
+
         gc = drawingArea.get_style().fg_gc[gtk.STATE_NORMAL]
         color = gtk.gdk.color_parse('red')
         drawingArea.modify_fg(gtk.STATE_NORMAL, color)  # color of rectangle
@@ -856,8 +855,11 @@ class MainWindow:
 
     @print_timing
     def loadImageAndBoxes(self, imageName, fileChooser):
-        (name, extension) = imageName.rsplit('.', 1)
-        boxname = name + '.box'
+        try:
+            (name, extension) = imageName.rsplit('.', 1)
+            boxname = name + '.box'
+        except:
+            pass
 
         file_ok = self.filecheck(imageName)
         if file_ok == False:
@@ -886,7 +888,7 @@ class MainWindow:
         if VERBOSE > 0:
             print datetime.now(), 'Displaying symbols...'
         self.populateTextVBox()
-                
+
         self.setImageControlSensitivity(True)
         self.selectedRow = 0
         self.selectedColumn = 0
@@ -1358,24 +1360,8 @@ class MainWindow:
         self.actionGroup.get_action('Edit').set_sensitive(bool)
 
     # enddef
-    
-    @print_timing
-    def doDrawBoxes(self, area):
-        '''Draw boxes on the picture'''
-        #TODO: must be show in individual window/new drawingArea
 
-        self.gc = self.drawingArea.get_style().fg_gc[gtk.STATE_NORMAL]
-        color = gtk.gdk.color_parse('green')  # color of rectangle
-        self.drawingArea.modify_fg(gtk.STATE_NORMAL, color)
 
-        for row in self.boxes:
-            for s in row:
-                #print s.bottom, s.left
-                width = s.right - s.left
-                height = s.bottom - s.top
-                self.drawingArea.window.draw_rectangle(self.gc,
-                    False, s.left, s.top, width, height)
-    
     @print_timing
     def doExportText(self, action):
         '''
@@ -1420,7 +1406,7 @@ class MainWindow:
                     ry_max = max(ry_max, ymax)
 
                     if xmin >= xmax_last + 6 and xmax_last != -1:  # new word
-                        
+
                         if len(text_line) <> 0:
                             text_line += " " + s.text
                         else:
@@ -1431,7 +1417,7 @@ class MainWindow:
                         text_line = s.text
                         line_start.append(rx_min)
                         line_end.append(rx_max)
-                       
+
                         rx_min = 0
                         rx_max = 0
                         ry_min = 0
@@ -1519,7 +1505,7 @@ class MainWindow:
                     ry_max = max(ry_max, ymax)
 
                     if xmin >= xmax_last + 6 and xmax_last != -1:  # new word
-                        
+
                         if len(text_line) <> 0:
                             text_line += " " + s.text
                         else:
@@ -1530,7 +1516,7 @@ class MainWindow:
                         text_line = s.text
                         line_start.append(rx_min)
                         line_end.append(rx_max)
-                       
+
                         rx_min = 0
                         rx_max = 0
                         ry_min = 0
@@ -1561,25 +1547,11 @@ class MainWindow:
     # enddef
 
     @print_timing
-    def toggle_area(self, action):
-        print "status of area:",  self.drawingArea.get_property('visible')
-        if self.area_show == True:
-            self.area_show = False
-            print "Action: area is hidden"
-        else:
-            self.doDrawBoxes(self.drawingArea)
-            self.area_show = True
-            print "Action: area is visible"
-
-    @print_timing
     def makeMenu(self):
         uiManager = gtk.UIManager()
         self.accelGroup = uiManager.get_accel_group()
         self.window.add_accel_group(self.accelGroup)
         self.actionGroup = gtk.ActionGroup('UIManagerExample')
-        self.actionGroup.add_toggle_actions([
-              ('Draw boxes', None, 'Draw b_oxes', None, 'Draw b_oxes', self.toggle_area, self.area_show)
-            ])
         self.actionGroup.add_actions(
             [('Open', gtk.STOCK_OPEN, '_Open Image...', None, None,
               self.doFileOpen),
@@ -1604,7 +1576,6 @@ class MainWindow:
              ('Delete', gtk.STOCK_DELETE , '_Delete Symbol&Box', '<Control>D',
               None, self.doEditDelete),
              ('Tools', gtk.STOCK_PREFERENCES, '_Tools'),
-             #('Draw boxes', None, 'Draw b_oxes', None, None, self.doDrawBoxes),
              ('Export text', None, 'Export _text', None, None, 
                self.doExportText),
              ('Export text - lines', None, 'Export text - _lines', '<Control>L', None, 
@@ -1655,7 +1626,7 @@ class MainWindow:
         self.drawingArea.connect('expose-event', self.redrawArea)
         self.scrolledWindow.add_with_viewport(self.drawingArea)
         self.drawingArea.show()
-        
+
         self.textScroll = gtk.ScrolledWindow()
         self.textScroll.set_policy(gtk.POLICY_AUTOMATIC,
                                    gtk.POLICY_AUTOMATIC)
@@ -1762,9 +1733,10 @@ class MainWindow:
 
         self.setImageControlSensitivity(False)
         self.setSymbolControlSensitivity(False)
-        self.window.show_all() #.show()
+        self.window.show_all()
 
-        if len(sys.argv) >= 2 and sys.argv[1] != "":
+        #if len(sys.argv) >= 2 and sys.argv[1] != "":
+        if len(sys.argv) >= 2:
             argfilename = sys.argv[1]
             self.loadImageAndBoxes(argfilename, self.window)
         else:
