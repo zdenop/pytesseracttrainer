@@ -46,21 +46,24 @@ import sys
 import os
 import shutil
 import codecs
+import ConfigParser
 from time import clock
 from datetime import datetime
 
 # parameters
+APPNAME = "tesseract-ocr"
 VERSION = '1.03'
-REVISION = '46'
-SAVE_FORMAT = 3  # tesseract v3 box format
-#BASE_FONT = 'monospace'
+REVISION = '48'
+# default values
 BASE_FONT = 'Consolas 12'
 NUMBER_COLOR = "green"
 PUNC_COLOR = "blue"
 LATER_COLOR = '#FF0000'
 STD_COLOR = '#000000'
+AB_COLOR = '#FF0000'
+
 DEBUG_SPEED = 0
-VERBOSE = 1  # if 1, than print additional information to standrard output
+VERBOSE = 1  # if 1, than print additional information to standard output
 
 MENU = \
     '''<ui>
@@ -122,7 +125,48 @@ def print_timing(func):
 
     return wrapper
 
+def write_default(cfg):
+    '''init default parameters'''
+    # TODO: test if exits - if not create ;-)
+    config = ConfigParser.ConfigParser()
+    config.add_section('System')
+    config.set('System', 'save_format', '3') # tesseract v3 box format
+    config.set('System', 'revision', REVISION)
+    config.add_section('GUI')
+    config.set('GUI', 'font', BASE_FONT)
+    config.set('GUI', 'standard', STD_COLOR)
+    config.set('GUI', 'later', LATER_COLOR)
+    config.set('GUI', 'active box', AB_COLOR)
 
+    # write configuration
+    with open(cfg, 'wb') as configfile:
+        config.write(configfile)
+
+def check_config():
+    """
+    Check/Create configuration file
+    """
+    if sys.platform == "win32" or os.name == "nt":
+        # Try env APPDATA or USERPROFILE or HOMEDRIVE/HOMEPATH
+        appdata = os.path.join(os.environ['APPDATA'], APPNAME)
+    else:
+        appdata = os.path.expanduser(path.join("~", "." + APPNAME))
+    config_file = os.path.join(appdata,  "pyTesseractTrainer.rc")
+    if os.path.exists(os.path.expanduser(appdata)) == False:
+        print appdata
+        os.mkdir(os.path.expanduser(appdata))
+    if os.path.isfile(os.path.expanduser(config_file)) == False:
+        write_default(config_file)
+    return config_file
+
+def read_cfg(section, option):
+    file_config = check_config()
+    config = ConfigParser.ConfigParser()
+    config.read(file_config)
+    result = config.get(section, option)
+    print section, option,  result
+    return result
+        
 class Symbol:
     '''class symbol '''
     text = ''
@@ -434,9 +478,34 @@ class MainWindow:
     area_show = False
 
     def show_prefs(self, action):  # TODO
-        self.prefs_dialog = gtk.Dialog("Preferences", self.window)
-        self.prefs_dialog.set_has_separator(False)
-        self.prefs_dialog.set_resizable(False)
+        
+        prefs = gtk.Dialog(("Preferences"), None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                                   (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_APPLY, gtk.RESPONSE_ACCEPT))
+        
+        hbox1 = gtk.HBox()
+        bf_label = gtk.Label("Font: ")
+        bf_entry = gtk.Entry()
+        bf_entry.set_text(read_cfg('GUI','font'))
+        hbox1.pack_start(bf_label, True, False)
+        hbox1.pack_start(bf_entry, False, False)
+
+        hbox2 = gtk.HBox()
+        sc_label = gtk.Label("Standard text color: ")
+        sc_entry = gtk.Entry()
+        sc_entry.set_text(read_cfg('GUI','standard'))
+        hbox2.pack_start(sc_label, False, False)
+        hbox2.pack_start(sc_entry, True, False)
+        
+        prefs.vbox.pack_start(hbox1)
+        prefs.vbox.pack_start(hbox2)
+        prefs.show_all()
+        response = prefs.run()
+        if response == gtk.RESPONSE_ACCEPT:
+            pass
+            # TODO: write save
+        else:
+            prefs.destroy()
+        prefs.destroy()
 
     @print_timing
     def reconnectEntries(self, rowIndex):
@@ -994,6 +1063,9 @@ class MainWindow:
 
     @print_timing
     def doFileSave(self, action):
+        '''Save modified box file'''
+        save_format = int(read_cfg('System', 'save_format'))
+        
         if self.boxes == None:
             self.errorDialog('Nothing to save', self.window)
             return
@@ -1034,7 +1106,7 @@ class MainWindow:
 
                 # endif
 
-                if  SAVE_FORMAT == 2:
+                if  save_format == 2:
                     save_f.write('%s %d %d %d %d\n' % (text, s.left, height
                             - s.bottom, s.right, height - s.top))
                 else:
@@ -1601,6 +1673,10 @@ class MainWindow:
     def __init__(self):
         if VERBOSE > 0:
             print 'Platform:', sys.platform
+        check_config()
+
+        BASE_FONT = read_cfg('GUI', 'font')
+        STD_COLOR = read_cfg('GUI', 'standard')
 
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.connect('destroy', lambda w: gtk.main_quit())
@@ -1632,11 +1708,8 @@ class MainWindow:
                                    gtk.POLICY_AUTOMATIC)
         vbox.pack_start(self.textScroll, True, True, 2)
         self.textScroll.show()
-        #http://osdir.com/ml/gnome.gtk+.python/2003-02/msg00099.html
         self.textVBox = gtk.VBox()
         self.textScroll.add_with_viewport(self.textVBox)
-        #self.textScroll.add(self.textVBox) 
-        #  use gtk_scrolled_window_add_with_viewport() instead
         self.textVBox.show()
 
         self.buttonBox = gtk.HBox(False, 0)
@@ -1735,7 +1808,6 @@ class MainWindow:
         self.setSymbolControlSensitivity(False)
         self.window.show_all()
 
-        #if len(sys.argv) >= 2 and sys.argv[1] != "":
         if len(sys.argv) >= 2:
             argfilename = sys.argv[1]
             self.loadImageAndBoxes(argfilename, self.window)
