@@ -49,11 +49,12 @@ import codecs
 import ConfigParser
 from time import clock
 from datetime import datetime
+from os import path,  name,  environ,  mkdir
 
 # parameters
 APPNAME = "tesseract-ocr"
 VERSION = '1.03'
-REVISION = '48'
+REVISION = '49'
 # default values
 BASE_FONT = 'Consolas 12'
 NUMBER_COLOR = "green"
@@ -146,16 +147,16 @@ def check_config():
     """
     Check/Create configuration file
     """
-    if sys.platform == "win32" or os.name == "nt":
+    if sys.platform == "win32" or name == "nt":
         # Try env APPDATA or USERPROFILE or HOMEDRIVE/HOMEPATH
-        appdata = os.path.join(os.environ['APPDATA'], APPNAME)
+        appdata = path.join(environ['APPDATA'], APPNAME)
     else:
-        appdata = os.path.expanduser(path.join("~", "." + APPNAME))
-    config_file = os.path.join(appdata,  "pyTesseractTrainer.rc")
-    if os.path.exists(os.path.expanduser(appdata)) == False:
+        appdata = path.expanduser(path.join("~", "." + APPNAME))
+    config_file = path.join(appdata,  "pyTesseractTrainer.rc")
+    if path.exists(path.expanduser(appdata)) == False:
         print appdata
-        os.mkdir(os.path.expanduser(appdata))
-    if os.path.isfile(os.path.expanduser(config_file)) == False:
+        mkdir(path.expanduser(appdata))
+    if path.isfile(path.expanduser(config_file)) == False:
         write_default(config_file)
     return config_file
 
@@ -166,7 +167,7 @@ def read_cfg(section, option):
     result = config.get(section, option)
     print section, option,  result
     return result
-        
+
 class Symbol:
     '''class symbol '''
     text = ''
@@ -260,26 +261,26 @@ class Symbol:
 
 def safe_backup(path, keep_original=True):
     """
-    Rename a file or directory safely without overwriting an existing 
+    Rename a file or directory safely without overwriting an existing
     backup of the same name.
     http://www.5dollarwhitebox.org/drupal/node/91
     """
     count = -1
     new_path = None
     while True:
-        if os.path.exists(path):
+        if path.exists(path):
             if count == -1:
                 new_path = "%s.bak" % (path)
             else:
                 new_path = "%s.bak.%s" % (path, count)
-            if os.path.exists(new_path):
+            if path.exists(new_path):
                 count += 1
                 continue
             else:
                 if keep_original:
-                    if os.path.isfile(path):
+                    if path.isfile(path):
                         shutil.copy(path, new_path)
-                    elif os.path.isdir(path):
+                    elif path.isdir(path):
                         shutil.copytree(path, new_path)
                 else:
                     shutil.move(path, new_path)
@@ -292,11 +293,11 @@ def find_format(boxname):
     ''''find format of box file'''
     expected_format = 0  # expected number of items
     wrong_row = ""  # here will be list of wrong rows
-    wrong_fl = False  # even first line is wrong 
+    wrong_fl = False  # even first line is wrong
                       # so we can not use it for expected format
     row = 1
 
-    fbn = open(boxname,'r') 
+    fbn = open(boxname,'r')
     for line in fbn:
         nmbr_items = len(line.split())
         if row == 1 and (nmbr_items == 5 or nmbr_items == 6):
@@ -396,7 +397,7 @@ def loadBoxData(boxname, height):
         # initial values for y coords as in tesseract
         s.rightup = int(top)
         s.leftdown = int(bottom)
-        # end initial values        
+        # end initial values
         s.top = height - s.rightup
         s.bottom = height - s.leftdown
         s.page = int(page)
@@ -469,7 +470,7 @@ def isBlack(pixel):
 
 
 class MainWindow:
-
+    """doc string"""
     pixbuf = None
     selectedRow = None
     selectedColumn = None
@@ -477,32 +478,81 @@ class MainWindow:
     boxes = None
     area_show = False
 
+    def color_set_cb(self, colorbutton):
+        color = colorbutton.get_color()
+        alpha = colorbutton.get_alpha()
+        print 'You have selected the color:', \
+              color.red, color.green, color.blue, 'with alpha:', alpha
+        return
+
+    def font_set_cb(self, fontbutton):
+        font = fontbutton.get_font_name()
+        print 'You have selected the font:', font
+        return
+
     def show_prefs(self, action):  # TODO
-        
         prefs = gtk.Dialog(("Preferences"), None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                                    (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT, gtk.STOCK_APPLY, gtk.RESPONSE_ACCEPT))
-        
+
         hbox1 = gtk.HBox()
         bf_label = gtk.Label("Font: ")
-        bf_entry = gtk.Entry()
-        bf_entry.set_text(read_cfg('GUI','font'))
+        fontbutton = gtk.FontButton(read_cfg('GUI','font'))
+        fontbutton.set_use_font(True)
+        fontbutton.set_title('Select a font')
+        #fontbutton.connect('font-set', self.font_set_cb)
         hbox1.pack_start(bf_label, True, False)
-        hbox1.pack_start(bf_entry, False, False)
+        hbox1.pack_start(fontbutton, False, False)
 
-        hbox2 = gtk.HBox()
         sc_label = gtk.Label("Standard text color: ")
-        sc_entry = gtk.Entry()
-        sc_entry.set_text(read_cfg('GUI','standard'))
-        hbox2.pack_start(sc_label, False, False)
-        hbox2.pack_start(sc_entry, True, False)
-        
+        sc_button = gtk.ColorButton(gtk.gdk.color_parse(read_cfg('GUI','standard')))
+        sc_button.set_title('Select a Color')
+        #sc_button.connect('color-set', self.color_set_cb)
+        hbox2 = gtk.HBox()
+        hbox2.pack_start(sc_label, False)
+        hbox2.pack_start(sc_button)
+
+        hbox3 = gtk.HBox()
+        lc_label = gtk.Label("Text color for later: ")
+        lc_button = gtk.ColorButton(gtk.gdk.color_parse(read_cfg('GUI','later')))
+        lc_button.set_title('Select a Color')
+        #lc_button.connect('color-set', self.color_set_cb)
+        hbox3.pack_start(lc_label, False, False)
+        hbox3.pack_start(lc_button)
+
+        hbox4 = gtk.HBox()
+        ab_label = gtk.Label("Active box color: ")
+        ab_button = gtk.ColorButton(gtk.gdk.color_parse(read_cfg('GUI','active box')))
+        ab_button.set_title('Select a Color')
+        #ab_button.connect('color-set', self.color_set_cb)
+        hbox4.pack_start(ab_label, False, False)
+        hbox4.pack_start(ab_button, True, False)
+
+        hbox5 = gtk.HBox()
+        ab_label = gtk.Label("Save format: ")
+        sf_cb = gtk.combo_box_new_text()
+        sf_cb.append_text('2')
+        sf_cb.append_text('3')
+        sf_cb .set_active(1)
+        hbox5.pack_start(ab_label, False, False)
+        hbox5.pack_start(sf_cb, True, False)
+
         prefs.vbox.pack_start(hbox1)
         prefs.vbox.pack_start(hbox2)
+        prefs.vbox.pack_start(hbox3)
+        prefs.vbox.pack_start(hbox4)
+        prefs.vbox.pack_start(hbox5)
         prefs.show_all()
+
         response = prefs.run()
         if response == gtk.RESPONSE_ACCEPT:
-            pass
             # TODO: write save
+            #config.set('System', 'save_format', ab_entry.get_text())
+            BASE_FONT = fontbutton.get_font_name()
+            STD_COLOR = sc_button.get_color()
+            LATER_COLOR = lc_button.get_color()
+            AB_COLOR = ab_button.get_color()
+            #save_format = int(read_cfg('System', 'save_format'))
+            save_format = sf_cb.get_active_text()
         else:
             prefs.destroy()
         prefs.destroy()
@@ -802,7 +852,7 @@ class MainWindow:
                                                          i_width, 1, 10))
         elif dir == DIR_RIGHT:
             s.right = value
-            self.spinLeft.set_adjustment(gtk.Adjustment(s.left, 0, 
+            self.spinLeft.set_adjustment(gtk.Adjustment(s.left, 0,
                                                         s.right, 1, 10))
         elif dir == DIR_TOP:
             s.top = value
@@ -1065,7 +1115,7 @@ class MainWindow:
     def doFileSave(self, action):
         '''Save modified box file'''
         save_format = int(read_cfg('System', 'save_format'))
-        
+
         if self.boxes == None:
             self.errorDialog('Nothing to save', self.window)
             return
@@ -1121,27 +1171,19 @@ class MainWindow:
 
     @print_timing
     def doHelpAbout(self, action):
-        dialog = gtk.Dialog('About pyTesseractTrainer', self.window,
-                            gtk.DIALOG_NO_SEPARATOR | gtk.DIALOG_MODAL,
-                            (gtk.STOCK_OK, gtk.RESPONSE_OK))
-        dialog.set_size_request(450, 250)
-        label = gtk.Label(
-            'pyTesseractTrainer version %s, revision: %s\n'
-            'website: pytesseracttrainer.googlecode.com\n'
-            '\n'
-            'Copyright 2010 Zdenko Podobný <zdenop at gmail.com>\n'
+        about = gtk.AboutDialog()
+        about.set_program_name("pyTesseractTrainer")
+        about.set_version("%s, revision: %s"  % (VERSION, REVISION))
+        about.set_copyright('Copyright 2010 Zdenko Podobný <zdenop at gmail.com>\n'
             'Copyright 2008 Mihail Radu Solcan (djvused and image maps)\n'
-            'Copyright 2007 Cătălin Frâncu <cata at francu.com>\n'
-            '\n'
+            'Copyright 2007 Cătălin Frâncu <cata at francu.com>\n')
+        about.set_comments('pyTesseractTrainer is editor for tesseract-ocr box files.\n\n'
             'This program is free software: you can redistribute it and/or '
-            'modify it under the terms of the GNU General Public License v3'
-            % (VERSION, REVISION))
-        label.set_line_wrap(True)
-        dialog.vbox.pack_start(label, True, True, 0)
-        label.show()
-        dialog.run()
-        dialog.destroy()
-
+            'modify it under the terms of the GNU General Public License v3')
+        about.set_website("http://pytesseracttrainer.googlecode.com")
+        #about.set_logo(gtk.gdk.pixbuf_new_from_file("battery.png"))
+        about.run()
+        about.destroy()
     # enddef
 
     def doHelpAboutMerge(self, action):
@@ -1255,14 +1297,9 @@ class MainWindow:
                     bestX = x
                     bestNumPixels = numPixels
         except:
-
-                # endif
-            # endfor
-                 # workaround for missing support in PyGTK
-
+           # workaround for missing support in PyGTK
             error = 'It looks like your PyGTK has no support for ' \
                 + "Numeric!\nCommand 'split' will not work best way."
-
             # self.errorDialog(error, self.window)
 
             if VERBOSE > 0:
@@ -1432,7 +1469,6 @@ class MainWindow:
         self.actionGroup.get_action('Edit').set_sensitive(bool)
 
     # enddef
-
 
     @print_timing
     def doExportText(self, action):
@@ -1648,11 +1684,11 @@ class MainWindow:
              ('Delete', gtk.STOCK_DELETE , '_Delete Symbol&Box', '<Control>D',
               None, self.doEditDelete),
              ('Tools', gtk.STOCK_PREFERENCES, '_Tools'),
-             ('Export text', None, 'Export _text', None, None, 
+             ('Export text', None, 'Export _text', None, None,
                self.doExportText),
-             ('Export text - lines', None, 'Export text - _lines', '<Control>L', None, 
+             ('Export text - lines', None, 'Export text - _lines', '<Control>L', None,
                self.doExportTextLines),
-             ('Preferences', gtk.STOCK_PROPERTIES, ('_Preferences...'), 
+             ('Preferences', gtk.STOCK_PROPERTIES, ('_Preferences...'),
                '<Ctrl>P', ('Preferences'), self.show_prefs),
              ('Help', gtk.STOCK_HELP, '_Help'),
              ('About', gtk.STOCK_ABOUT, '_About', None, None, self.doHelpAbout),
@@ -1682,7 +1718,7 @@ class MainWindow:
         self.window.connect('destroy', lambda w: gtk.main_quit())
         self.window.set_title('pyTesseractTrainer - Tesseract Box '
                               + 'Editor version %s, revision:%s'
-                              % (VERSION, REVISION))        
+                              % (VERSION, REVISION))
         self.window.set_size_request(840, 600)
 
         vbox = gtk.VBox(False, 2)
