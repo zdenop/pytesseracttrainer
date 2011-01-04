@@ -1,12 +1,21 @@
 = Description of Test Files =
+-----------------------------
 
+error.example.slk.box - example of box file with error (missing symbol in 
+                        line 4, additional data in line 8 and empty line 16)
 example.slk.tif       - example image file
 example.slk.txt       - text from example image
 example.slk.box       - example tesseract v2.0x box file
                         (with corrected errors)
-tv3.example.slk.box   - example tesseract v3.00 box file 
-                        (original with errors)
-error.example.slk.box - example of box file with error (missing symbol in 
-                        line 4, additional data in line 8 and empty line 16)
+kan01.box             - kannada font box file example
+                        (thanks to withblessings at gmail.com)
+kan01.png             - kannada font image example
+                        (thanks to withblessings at gmail.com)
+pangrams-stam.box     - RTL (Hebrew ) box file example
+                        (thanks to enrico.segre at weizmann.ac.il)
+pangrams-stam.png     - RTL (Hebrew ) image example
+                        (thanks to enrico.segre at weizmann.ac.il)
 test_special.eng.tif  - test image for special symbols (fixed in r22)
 test_special.eng.box  - box file for special symbols test image
+tv3.example.slk.box   - example tesseract v3.00 box file 
+                        (original with errors)
