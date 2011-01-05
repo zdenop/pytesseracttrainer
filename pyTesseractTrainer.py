@@ -54,9 +54,9 @@ from os import path,  name,  environ,  mkdir
 # parameters
 APPNAME = "tesseract-ocr"
 VERSION = '1.03'
-REVISION = '49'
+REVISION = '50'
 # default values
-BASE_FONT = 'Consolas 12'
+BASE_FONT = 'unifont 11'
 NUMBER_COLOR = "green"
 PUNC_COLOR = "blue"
 LATER_COLOR = '#FF0000'
@@ -170,7 +170,7 @@ def read_cfg(section, option):
 
 class Symbol:
     '''class symbol '''
-    text = ''
+    text = u''
     left = 0
     right = 0
     top = 0
@@ -205,10 +205,10 @@ class Symbol:
 
         if self.underline:
             self.entry.set_width_chars(len(unicode(self.text)) + 1)
-            self.entry.set_text("'" + self.text)
+            self.entry.set_text("'" + unicode(self.text))
         else:
             self.entry.set_width_chars(len(unicode(self.text)))
-            self.entry.set_text(self.text)
+            self.entry.set_text(unicode(self.text))
 
         # endif
 
@@ -259,7 +259,7 @@ class Symbol:
     # enddef
 # endclass
 
-def safe_backup(path, keep_original=True):
+def safe_backup(f_path, keep_original=True):
     """
     Rename a file or directory safely without overwriting an existing
     backup of the same name.
@@ -267,23 +267,24 @@ def safe_backup(path, keep_original=True):
     """
     count = -1
     new_path = None
+    print "cesta:", f_path
     while True:
-        if path.exists(path):
+        if path.exists(f_path):
             if count == -1:
-                new_path = "%s.bak" % (path)
+                new_path = "%s.bak" % (f_path)
             else:
-                new_path = "%s.bak.%s" % (path, count)
+                new_path = "%s.bak.%s" % (f_path, count)
             if path.exists(new_path):
                 count += 1
                 continue
             else:
                 if keep_original:
-                    if path.isfile(path):
-                        shutil.copy(path, new_path)
-                    elif path.isdir(path):
-                        shutil.copytree(path, new_path)
+                    if path.isfile(f_path):
+                        shutil.copy(f_path, new_path)
+                    elif path.isdir(f_path):
+                        shutil.copytree(f_path, new_path)
                 else:
-                    shutil.move(path, new_path)
+                    shutil.move(f_path, new_path)
                 break
         else:
             break
@@ -345,7 +346,8 @@ def loadBoxData(boxname, height):
     if open_format == -1:
         return -1 # wrong format of box file
 
-    fbn = codecs.open(boxname, 'r', 'utf-8')
+    #fbn = codecs.open(boxname, 'r', 'utf-8')
+    fbn = open(boxname, 'r')
     if VERBOSE > 0:
         print datetime.now(), 'File %s is opened.' % boxname
     result = []
@@ -591,20 +593,12 @@ class MainWindow:
     # enddef
 
     @print_timing
-    def makeGtkEntry(
-        self,
-        symbol,
-        row,
-        col,
-        ):
+    def makeGtkEntry( self, symbol, row, col):
         if VERBOSE > 1:
             print datetime.now(), \
             u"symbol: '', row: '%s', col: '%s', page: '%s'" \
                 % (row, col, symbol.page)
-        symbol.entry = gtk.Entry(10)
-        symbol.entry.set_text(symbol.text)
-        symbol.entry.set_width_chars(len(unicode(symbol.text)))
-        symbol.setEntryFont()
+        symbol.entry = gtk.Entry()
         symbol.handlers = [symbol.entry.connect('focus-in-event',
                            self.onEntryFocus, row, col),
                            symbol.entry.connect('changed',
@@ -904,7 +898,8 @@ class MainWindow:
         for line in self.boxes:
             col = 0
             hbox = gtk.HBox()
-            self.textVBox.pack_start(hbox)
+            #self.textVBox.pack_start(hbox)
+            self.textVBox.pack_start(hbox, False, True, 3)
             hbox.show()
             for s in line:
                 if s.spaceBefore:
@@ -915,7 +910,13 @@ class MainWindow:
                 # endif
 
                 self.makeGtkEntry(s, row, col)
-                hbox.pack_start(s.entry, False, False, 0)
+                hbox.pack_start(s.entry, expand=False, fill=False, padding=0)
+                # following entry properties must be used after hbox.pack_start
+                # otherwise RTL chars will receives offset
+                # print 'scroll-offset:', s.entry.get_property('scroll-offset')
+                s.entry.set_text(s.text)
+                s.entry.set_width_chars(len(unicode(s.text)))
+                s.setEntryFont()
                 s.entry.show()
                 col += 1
 
@@ -929,16 +930,15 @@ class MainWindow:
     #@print_timing
     def redrawArea(self, drawingArea, event):
         '''redraw area of selected symbol + add rectangle'''
+        if self.selectedRow != None:
+            gc = drawingArea.get_style().fg_gc[gtk.STATE_NORMAL]
+            color = gtk.gdk.color_parse('red')
+            drawingArea.modify_fg(gtk.STATE_NORMAL, color)  # color of rectangle
+            if self.pixbuf:
+                drawingArea.window.draw_pixbuf(gc, self.pixbuf, 0, 0, 0, 0)
 
-        gc = drawingArea.get_style().fg_gc[gtk.STATE_NORMAL]
-        color = gtk.gdk.color_parse('red')
-        drawingArea.modify_fg(gtk.STATE_NORMAL, color)  # color of rectangle
-        if self.pixbuf:
-            drawingArea.window.draw_pixbuf(gc, self.pixbuf, 0, 0, 0, 0)
+            # endif
 
-        # endif
-
-        if (self.selectedRow != None and self.selectedColumn != None):
             s = self.boxes[self.selectedRow][self.selectedColumn]
             width = s.right - s.left
             height = s.bottom - s.top
