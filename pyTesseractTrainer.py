@@ -932,8 +932,6 @@ class MainWindow:
         '''redraw area of selected symbol + add rectangle'''
         if self.selectedRow != None:
             gc = drawingArea.get_style().fg_gc[gtk.STATE_NORMAL]
-            color = gtk.gdk.color_parse('red')
-            drawingArea.modify_fg(gtk.STATE_NORMAL, color)  # color of rectangle
             if self.pixbuf:
                 drawingArea.window.draw_pixbuf(gc, self.pixbuf, 0, 0, 0, 0)
 
@@ -1735,6 +1733,8 @@ class MainWindow:
         self.scrolledWindow.show()
 
         self.drawingArea = gtk.DrawingArea()
+        color = gtk.gdk.color_parse('red')
+        self.drawingArea.modify_fg(gtk.STATE_NORMAL, color)  # color of rectangle
         self.drawingArea.connect('expose-event', self.redrawArea)
         self.scrolledWindow.add_with_viewport(self.drawingArea)
         self.drawingArea.show()
